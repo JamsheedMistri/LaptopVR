@@ -303,7 +303,7 @@
     if ([self.captureSession canAddInput:self.captureScreenInput])
     {
         [self.captureSession addInput:self.captureScreenInput];
-        [self setMaximumScreenInputFramerate:[self maximumScreenInputFramerate] / 10];
+        [self setMaximumScreenInputFramerate:[self maximumScreenInputFramerate]];
     }
     else
     {
