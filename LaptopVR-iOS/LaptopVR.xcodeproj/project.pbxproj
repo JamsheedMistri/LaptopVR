@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		512C9E492795C11600771C7B /* MotionManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 512C9E482795C11600771C7B /* MotionManager.m */; };
 		5173119727258A070063C066 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5173119627258A070063C066 /* Images.xcassets */; };
 		5189CCB627919FC4000A13B1 /* libz.1.2.11.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 5189CCB527919FC4000A13B1 /* libz.1.2.11.tbd */; };
 		51F4D528279558A1001B397C /* StreamLayerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 51F4D527279558A1001B397C /* StreamLayerViewController.m */; };
@@ -53,6 +54,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		512C9E472795C11600771C7B /* MotionManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MotionManager.h; sourceTree = "<group>"; };
+		512C9E482795C11600771C7B /* MotionManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MotionManager.m; sourceTree = "<group>"; };
 		5173119627258A070063C066 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
 		5189CCB527919FC4000A13B1 /* libz.1.2.11.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.1.2.11.tbd; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS15.2.sdk/usr/lib/libz.1.2.11.tbd; sourceTree = DEVELOPER_DIR; };
 		518C98DF272409CC00C52220 /* PTProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PTProtocol.h; sourceTree = "<group>"; };
@@ -112,6 +115,8 @@
 				6A64AAFC1526050D0065BF86 /* MainViewController.m */,
 				51F4D526279558A1001B397C /* StreamLayerViewController.h */,
 				51F4D527279558A1001B397C /* StreamLayerViewController.m */,
+				512C9E472795C11600771C7B /* MotionManager.h */,
+				512C9E482795C11600771C7B /* MotionManager.m */,
 				AB1C5C60257A7E9A00F41941 /* LaunchScreen.storyboard */,
 				AB1C5BF0257A7CE200F41941 /* Main.storyboard */,
 				5173119627258A070063C066 /* Images.xcassets */,
@@ -289,6 +294,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				512C9E492795C11600771C7B /* MotionManager.m in Sources */,
 				51F4D528279558A1001B397C /* StreamLayerViewController.m in Sources */,
 				6A64AAF01526050D0065BF86 /* main.m in Sources */,
 				6A64AAF41526050D0065BF86 /* AppDelegate.m in Sources */,

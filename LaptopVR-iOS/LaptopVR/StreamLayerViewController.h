@@ -13,7 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 @interface StreamLayerViewController : UIViewController
 
 - (void)enqueueSampleBuffer:(CMSampleBufferRef)sampleBuffer;
-- (void)updateFrame;
+- (void)updateFrameWidth:(int)width height:(int)height;
+- (void)updatePitch:(float)pitch;
 
 @end
 

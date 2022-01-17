@@ -2,6 +2,7 @@
 #import "MainViewController.h"
 #import "zlib.h"
 #import "StreamLayerViewController.h"
+#import "MotionManager.h"
 
 @interface MainViewController () <PTChannelDelegate> {
     __weak PTChannel *serverChannel_;
@@ -15,6 +16,7 @@
 @implementation MainViewController {
     StreamLayerViewController *leftEye;
     StreamLayerViewController *rightEye;
+    MotionManager *motionManager;
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -41,12 +43,15 @@
     }
     
     // From some reason, x & y origin coordinates for CGRect need to be halved to display correctly on iOS
-    leftEye.view.frame = CGRectMake(notchHeight / 2, 0, width - notchHeight, height);
-    rightEye.view.frame = CGRectMake(width / 2, 0, width - notchHeight, height);
+    leftEye.view.frame = CGRectMake(notchHeight, 0, width - notchHeight, height);
+    rightEye.view.frame = CGRectMake(width, 0, width - notchHeight, height);
+    leftEye.view.clipsToBounds = YES;
+    rightEye.view.clipsToBounds = YES;
     
-    [leftEye updateFrame];
-    [rightEye updateFrame];
-
+    // Motion manager
+    motionManager = [[MotionManager alloc] init];
+    [motionManager enableMotion];
+    
     // Create a new channel that is listening on our IPv4 port
     PTChannel *channel = [PTChannel channelWithDelegate:self];
     [channel listenOnPort:PTProtocolIPv4PortNumber IPv4Address:INADDR_LOOPBACK callback:^(NSError *error) {
@@ -185,6 +190,12 @@
     [data getBytes:&width range:NSMakeRange(0, widthHeightSize)];
     [data getBytes:&height range:NSMakeRange(widthHeightSize, widthHeightSize)];
     [data getBytes:&pixelFormat range:NSMakeRange(widthHeightSize * 2, pixelFormatSize)];
+    
+    [leftEye updateFrameWidth:(int)width height:(int)height];
+    [rightEye updateFrameWidth:(int)width height:(int)height];
+    float pitch = [motionManager updateAttitudeAndGetPitch];
+    [leftEye updatePitch:pitch];
+    [rightEye updatePitch:pitch];
     
     // Create an empty pixel buffer
     CVPixelBufferRef pixelBuffer;

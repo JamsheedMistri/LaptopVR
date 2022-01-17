@@ -321,9 +321,9 @@
 - (BOOL)createCaptureSession {
     /* Create a capture session. */
     self.captureSession = [[AVCaptureSession alloc] init];
-    if ([self.captureSession canSetSessionPreset:AVCaptureSessionPreset1280x720]) {
+    if ([self.captureSession canSetSessionPreset:AVCaptureSessionPresetHigh]) {
         /* Specifies capture settings suitable for high quality video and audio output. */
-        [self.captureSession setSessionPreset:AVCaptureSessionPreset1280x720];
+        [self.captureSession setSessionPreset:AVCaptureSessionPresetHigh];
     }
     
     /* Add the main display as a capture input. */
