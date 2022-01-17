@@ -2,6 +2,6 @@
 #import <AVFoundation/AVFoundation.h>
 #import "PTChannel.h"
 
-@interface PTViewController : UIViewController
+@interface MainViewController : UIViewController
 
 @end

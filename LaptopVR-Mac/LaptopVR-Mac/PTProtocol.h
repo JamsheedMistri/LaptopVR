@@ -4,10 +4,10 @@
 #import <Foundation/Foundation.h>
 #include <stdint.h>
 
-static const int PTExampleProtocolIPv4PortNumber = 2345;
+static const int PTProtocolIPv4PortNumber = 2345;
 
 enum {
-    PTExampleFrameTypeDeviceInfo = 100,
+    PTDeviceInfo = 100,
     PTDesktopFrame = 200,
 };
 

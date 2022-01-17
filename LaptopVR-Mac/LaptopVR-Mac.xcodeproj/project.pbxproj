@@ -10,8 +10,9 @@
 		5132C7EA2723D56B00665A97 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5132C7E92723D56B00665A97 /* AVFoundation.framework */; };
 		5132C7EC2723DD4900665A97 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5132C7EB2723DD4900665A97 /* CoreMedia.framework */; };
 		5173119927258C2F0063C066 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5173119827258C2F0063C066 /* Images.xcassets */; };
+		5189CCB427919FAC000A13B1 /* libz.1.2.11.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 5189CCB327919FAC000A13B1 /* libz.1.2.11.tbd */; };
 		6A64AAD0152604D40065BF86 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 6A64AACF152604D40065BF86 /* main.m */; };
-		6A64AAD7152604D40065BF86 /* PTAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 6A64AAD6152604D40065BF86 /* PTAppDelegate.m */; };
+		6A64AAD7152604D40065BF86 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 6A64AAD6152604D40065BF86 /* AppDelegate.m */; };
 		6A64AADA152604D40065BF86 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 6A64AAD8152604D40065BF86 /* MainMenu.xib */; };
 		AB6C9973257BB6E900D5624E /* PTDefines.h in Headers */ = {isa = PBXBuildFile; fileRef = AB1C5CA8257B96E200F41941 /* PTDefines.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		AB6C9974257BB6E900D5624E /* PTPrivate.h in Headers */ = {isa = PBXBuildFile; fileRef = 5E2C5023171F46A6008A9752 /* PTPrivate.h */; };
@@ -56,12 +57,13 @@
 		5132C7E92723D56B00665A97 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		5132C7EB2723DD4900665A97 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		5173119827258C2F0063C066 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
+		5189CCB327919FAC000A13B1 /* libz.1.2.11.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.1.2.11.tbd; path = usr/lib/libz.1.2.11.tbd; sourceTree = SDKROOT; };
 		5E2C5023171F46A6008A9752 /* PTPrivate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PTPrivate.h; sourceTree = "<group>"; };
 		6A64AAC6152604D40065BF86 /* LaptopVR-Mac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "LaptopVR-Mac.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6A64AACB152604D40065BF86 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		6A64AACF152604D40065BF86 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		6A64AAD5152604D40065BF86 /* PTAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PTAppDelegate.h; sourceTree = "<group>"; };
-		6A64AAD6152604D40065BF86 /* PTAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PTAppDelegate.m; sourceTree = "<group>"; };
+		6A64AAD5152604D40065BF86 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		6A64AAD6152604D40065BF86 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		6A64AAD9152604D40065BF86 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		6A64AB01152608C80065BF86 /* PTProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PTProtocol.h; sourceTree = "<group>"; };
 		6A88FA5C150D61DE00FC3647 /* PTProtocol.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PTProtocol.h; sourceTree = "<group>"; };
@@ -83,6 +85,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5189CCB427919FAC000A13B1 /* libz.1.2.11.tbd in Frameworks */,
 				5132C7EC2723DD4900665A97 /* CoreMedia.framework in Frameworks */,
 				5132C7EA2723D56B00665A97 /* AVFoundation.framework in Frameworks */,
 				AB6C9A3C257BDCEB00D5624E /* Cocoa.framework in Frameworks */,
@@ -105,8 +108,8 @@
 			isa = PBXGroup;
 			children = (
 				6A64AB01152608C80065BF86 /* PTProtocol.h */,
-				6A64AAD5152604D40065BF86 /* PTAppDelegate.h */,
-				6A64AAD6152604D40065BF86 /* PTAppDelegate.m */,
+				6A64AAD5152604D40065BF86 /* AppDelegate.h */,
+				6A64AAD6152604D40065BF86 /* AppDelegate.m */,
 				6A64AAD8152604D40065BF86 /* MainMenu.xib */,
 				5173119827258C2F0063C066 /* Images.xcassets */,
 				6A64AACA152604D40065BF86 /* Supporting Files */,
@@ -162,6 +165,7 @@
 		AB6C99DC257BD89600D5624E /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				5189CCB327919FAC000A13B1 /* libz.1.2.11.tbd */,
 				5132C7EB2723DD4900665A97 /* CoreMedia.framework */,
 				5132C7E92723D56B00665A97 /* AVFoundation.framework */,
 				AB6C9A3D257BDCF200D5624E /* QuartzCore.framework */,
@@ -284,7 +288,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6A64AAD0152604D40065BF86 /* main.m in Sources */,
-				6A64AAD7152604D40065BF86 /* PTAppDelegate.m in Sources */,
+				6A64AAD7152604D40065BF86 /* AppDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

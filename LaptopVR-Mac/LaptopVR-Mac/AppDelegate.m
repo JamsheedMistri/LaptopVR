@@ -1,12 +1,11 @@
-#import "PTAppDelegate.h"
+#import "AppDelegate.h"
 #import "PTProtocol.h"
-
 #import <peertalk/PTProtocol.h>
 #import <peertalk/PTUSBHub.h>
 #import <QuartzCore/QuartzCore.h>
+#import "zlib.h"
 
-@interface PTAppDelegate () {
-    // If the remote connection is over USB transport...
+@interface AppDelegate () {
     NSNumber *connectingToDeviceID_;
     NSNumber *connectedDeviceID_;
     NSDictionary *connectedDeviceProperties_;
@@ -33,8 +32,7 @@
 
 @end
 
-@implementation PTAppDelegate
-{
+@implementation AppDelegate {
     CGDirectDisplayID display;
     AVCaptureVideoDataOutput *outputDevice;
     NSMutableArray *shadeWindows;
@@ -45,10 +43,7 @@
 @synthesize connectedDeviceID = connectedDeviceID_;
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
-    // We use a serial queue that we toggle depending on if we are connected or
-    // not. When we are not connected to a peer, the queue is running to handle
-    // "connect" tries. When we are connected to a peer, the queue is suspended
-    // thus no longer trying to connect.
+    // We use a serial queue that we toggle depending on if we are connected or not. When we are not connected to a peer, the queue is running to handle "connect" tries. When we are connected to a peer, the queue is suspended thus no longer trying to connect.
     notConnectedQueue_ = dispatch_queue_create("PTExample.notConnectedQueue", DISPATCH_QUEUE_SERIAL);
     isCurrentlyStreaming = false;
     
@@ -103,8 +98,7 @@
 #pragma mark - PTChannelDelegate
 
 - (BOOL)ioFrameChannel:(PTChannel*)channel shouldAcceptFrameOfType:(uint32_t)type tag:(uint32_t)tag payloadSize:(uint32_t)payloadSize {
-    if (   type != PTExampleFrameTypeDeviceInfo
-        && type != PTFrameTypeEndOfStream) {
+    if (type != PTDeviceInfo && type != PTFrameTypeEndOfStream) {
         NSLog(@"Unexpected frame of type %u", type);
         [channel close];
         return NO;
@@ -114,7 +108,7 @@
 }
 
 - (void)ioFrameChannel:(PTChannel*)channel didReceiveFrameOfType:(uint32_t)type tag:(uint32_t)tag payload:(NSData *)payload {
-    if (type == PTExampleFrameTypeDeviceInfo) {
+    if (type == PTDeviceInfo) {
         NSDictionary *deviceInfo = [NSData dictionaryWithContentsOfData:payload];
         [self presentMessage:[NSString stringWithFormat:@"Connected to %@", deviceInfo.description] isStatus:YES];
         [_startButton setEnabled:true];
@@ -202,13 +196,13 @@
 
 - (void)connectToLocalIPv4Port {
     PTChannel *channel = [PTChannel channelWithDelegate:self];
-    channel.userInfo = [NSString stringWithFormat:@"127.0.0.1:%d", PTExampleProtocolIPv4PortNumber];
-    [channel connectToPort:PTExampleProtocolIPv4PortNumber IPv4Address:INADDR_LOOPBACK callback:^(NSError *error, PTAddress *address) {
+    channel.userInfo = [NSString stringWithFormat:@"127.0.0.1:%d", PTProtocolIPv4PortNumber];
+    [channel connectToPort:PTProtocolIPv4PortNumber IPv4Address:INADDR_LOOPBACK callback:^(NSError *error, PTAddress *address) {
         if (error) {
             if (error.domain == NSPOSIXErrorDomain && (error.code == ECONNREFUSED || error.code == ETIMEDOUT)) {
                 // this is an expected state
             } else {
-                NSLog(@"Failed to connect to 127.0.0.1:%d: %@", PTExampleProtocolIPv4PortNumber, error);
+                NSLog(@"Failed to connect to 127.0.0.1:%d: %@", PTProtocolIPv4PortNumber, error);
             }
         } else {
             [self disconnectFromCurrentChannel];
@@ -233,7 +227,7 @@
     channel.userInfo = connectingToDeviceID_;
     channel.delegate = self;
     
-    [channel connectToPort:PTExampleProtocolIPv4PortNumber overUSBHub:PTUSBHub.sharedHub deviceID:connectingToDeviceID_ callback:^(NSError *error) {
+    [channel connectToPort:PTProtocolIPv4PortNumber overUSBHub:PTUSBHub.sharedHub deviceID:connectingToDeviceID_ callback:^(NSError *error) {
         if (error) {
             if (error.domain == PTUSBHubErrorDomain && error.code == PTUSBHubErrorConnectionRefused) {
                 NSLog(@"Failed to connect to device #%@: %@", channel.userInfo, error);
@@ -251,21 +245,19 @@
 }
 
 - (BOOL)captureOutputShouldProvideSampleAccurateRecordingStart:(nonnull AVCaptureOutput *)output { 
-    // We don't require frame accurate start when we start a recording. If we answer YES, the capture output
-    // applies outputSettings immediately when the session starts previewing, resulting in higher CPU usage
-    // and shorter battery life.
+    // We don't require frame accurate start when we start a recording. If we answer YES, the capture output applies outputSettings immediately when the session starts previewing, resulting in higher CPU usage and shorter battery life.
     return NO;
 }
 
 #pragma mark - Output device delegate
 
 // Credit: https://stackoverflow.com/questions/12242513/how-to-get-real-time-video-stream-from-iphone-camera-and-send-it-to-server
--(void) captureOutput:(AVCaptureOutput*)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection*)connection
-{
+-(void) captureOutput:(AVCaptureOutput*)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection*)connection {
     if (connectedChannel_) {
         NSMutableData *data = [[NSMutableData alloc] init];
         [self imageBuffer:sampleBuffer toData:data];
-        [connectedChannel_ sendFrameOfType:PTDesktopFrame tag:PTFrameNoTag withPayload:data callback:^(NSError *error) {
+        NSData* compressedData = [self gzipDeflate:data];
+        [connectedChannel_ sendFrameOfType:PTDesktopFrame tag:PTFrameNoTag withPayload:compressedData callback:^(NSError *error) {
             if (error) {
                 NSLog(@"Failed to send frame: %@", error);
             }
@@ -273,26 +265,63 @@
     }
 }
 
-- (float)maximumScreenInputFramerate
-{
+// https://stackoverflow.com/questions/8425012/is-there-a-practical-way-to-compress-nsdata
+- (NSData *)gzipDeflate:(NSData*)data {
+    if ([data length] == 0) return data;
+
+    z_stream strm;
+
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+    strm.total_out = 0;
+    strm.next_in=(Bytef *)[data bytes];
+    strm.avail_in = [data length];
+
+    // Compresssion Levels:
+    //   Z_NO_COMPRESSION
+    //   Z_BEST_SPEED
+    //   Z_BEST_COMPRESSION
+    //   Z_DEFAULT_COMPRESSION
+
+    if (deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, (15+16), 8, Z_DEFAULT_STRATEGY) != Z_OK) return nil;
+
+    NSMutableData *compressed = [NSMutableData dataWithLength:16384];  // 16K chunks for expansion
+
+    do {
+        if (strm.total_out >= [compressed length])
+            [compressed increaseLengthBy: 16384];
+
+        strm.next_out = [compressed mutableBytes] + strm.total_out;
+        strm.avail_out = [compressed length] - strm.total_out;
+
+        deflate(&strm, Z_FINISH);
+
+    } while (strm.avail_out == 0);
+
+    deflateEnd(&strm);
+
+    [compressed setLength: strm.total_out];
+    return [NSData dataWithData:compressed];
+}
+
+
+- (float)maximumScreenInputFramerate {
     Float64 minimumVideoFrameInterval = CMTimeGetSeconds([self.captureScreenInput minFrameDuration]);
     return minimumVideoFrameInterval > 0.0f ? 1.0f/minimumVideoFrameInterval : 0.0;
 }
 
 /* Set the screen input maximum frame rate. */
-- (void)setMaximumScreenInputFramerate:(float)maximumFramerate
-{
+- (void)setMaximumScreenInputFramerate:(float)maximumFramerate {
     CMTime minimumFrameDuration = CMTimeMake(1, (int32_t)maximumFramerate);
     /* Set the screen input's minimum frame duration. */
     [self.captureScreenInput setMinFrameDuration:minimumFrameDuration];
 }
 
-- (BOOL)createCaptureSession
-{
+- (BOOL)createCaptureSession {
     /* Create a capture session. */
     self.captureSession = [[AVCaptureSession alloc] init];
-    if ([self.captureSession canSetSessionPreset:AVCaptureSessionPreset1280x720])
-    {
+    if ([self.captureSession canSetSessionPreset:AVCaptureSessionPreset1280x720]) {
         /* Specifies capture settings suitable for high quality video and audio output. */
         [self.captureSession setSessionPreset:AVCaptureSessionPreset1280x720];
     }
@@ -300,25 +329,19 @@
     /* Add the main display as a capture input. */
     display = CGMainDisplayID();
     self.captureScreenInput = [[AVCaptureScreenInput alloc] initWithDisplayID:display];
-    if ([self.captureSession canAddInput:self.captureScreenInput])
-    {
+    if ([self.captureSession canAddInput:self.captureScreenInput]) {
         [self.captureSession addInput:self.captureScreenInput];
         [self setMaximumScreenInputFramerate:[self maximumScreenInputFramerate]];
-    }
-    else
-    {
+    } else {
         return NO;
     }
     
     /* Add a movie file output + delegate. */
     outputDevice = [[AVCaptureVideoDataOutput alloc] init];
     [outputDevice setSampleBufferDelegate:self queue:dispatch_get_main_queue()];
-    if ([self.captureSession canAddOutput:outputDevice])
-    {
+    if ([self.captureSession canAddOutput:outputDevice]) {
         [self.captureSession addOutput:outputDevice];
-    }
-    else
-    {
+    } else {
         return NO;
     }
     
@@ -328,8 +351,7 @@
     return YES;
 }
 
-- (void)captureSessionRuntimeErrorDidOccur:(NSNotification *)notification
-{
+- (void)captureSessionRuntimeErrorDidOccur:(NSNotification *)notification {
     NSError *error = [notification userInfo][AVCaptureSessionErrorKey];
     NSAlert *alert = [[NSAlert alloc] init];
     [alert setAlertStyle:NSAlertStyleCritical];
@@ -347,7 +369,7 @@
 // Credit: https://stackoverflow.com/questions/18811917/nsdata-or-bytes-from-cmsamplebufferref
 - (void) imageBuffer:(CMSampleBufferRef)source toData:(NSMutableData *)data {
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(source);
-    CVPixelBufferLockBaseAddress(imageBuffer,0);
+    CVPixelBufferLockBaseAddress(imageBuffer, 0);
     
     size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
     long width = CVPixelBufferGetWidth(imageBuffer);
@@ -355,9 +377,12 @@
     OSType pixelBufferType = CVPixelBufferGetPixelFormatType(imageBuffer);
     void *src_buff = CVPixelBufferGetBaseAddress(imageBuffer);
     
-    [data appendBytes:&width length:sizeof(long)];
-    [data appendBytes:&height length:sizeof(long)];
-    [data appendBytes:&pixelBufferType length:sizeof(UInt32)];
+    int widthHeightSize = sizeof(long);
+    int pixelFormatSize = sizeof(UInt32);
+    
+    [data appendBytes:&width length:widthHeightSize];
+    [data appendBytes:&height length:widthHeightSize];
+    [data appendBytes:&pixelBufferType length:pixelFormatSize];
     [data appendBytes:src_buff length:bytesPerRow * height];
     
     CVPixelBufferUnlockBaseAddress(imageBuffer, 0);

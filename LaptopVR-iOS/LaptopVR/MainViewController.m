@@ -1,23 +1,21 @@
 #import "PTProtocol.h"
-#import "PTViewController.h"
+#import "MainViewController.h"
+#import "zlib.h"
+#import "StreamLayerViewController.h"
 
-@interface PTViewController () <
-PTChannelDelegate,
-UITextFieldDelegate
-> {
+@interface MainViewController () <PTChannelDelegate> {
     __weak PTChannel *serverChannel_;
     __weak PTChannel *peerChannel_;
 }
-
-@property (weak, nonatomic) IBOutlet UIView *parentView;
-@property (weak, nonatomic) IBOutlet UIImageView *leftEye;
-@property (weak, nonatomic) IBOutlet UIImageView *rightEye;
 
 @property(nonatomic, readonly) BOOL prefersHomeIndicatorAutoHidden;
 
 @end
 
-@implementation PTViewController
+@implementation MainViewController {
+    StreamLayerViewController *leftEye;
+    StreamLayerViewController *rightEye;
+}
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
@@ -27,16 +25,35 @@ UITextFieldDelegate
     [super viewDidLoad];
     _prefersHomeIndicatorAutoHidden = true;
     
-    [_leftEye.trailingAnchor constraintEqualToAnchor:_parentView.centerXAnchor].active = YES;
-    [_rightEye.leadingAnchor constraintEqualToAnchor:_parentView.centerXAnchor].active = YES;
+    leftEye = [[StreamLayerViewController alloc] init];
+    rightEye = [[StreamLayerViewController alloc] init];
     
+    [self.view addSubview:leftEye.view];
+    [self.view addSubview:rightEye.view];
+    
+    int width = self.view.frame.size.width / 2;
+    int height = self.view.frame.size.height;
+    int notchHeight = 0;
+    
+    if (@available(iOS 11.0, *)) {
+        // In order to get the notch height in landscape mode, take the max of the 2 safe areas
+        notchHeight = MAX(UIApplication.sharedApplication.windows.firstObject.safeAreaInsets.left, UIApplication.sharedApplication.windows.firstObject.safeAreaInsets.right);
+    }
+    
+    // From some reason, x & y origin coordinates for CGRect need to be halved to display correctly on iOS
+    leftEye.view.frame = CGRectMake(notchHeight / 2, 0, width - notchHeight, height);
+    rightEye.view.frame = CGRectMake(width / 2, 0, width - notchHeight, height);
+    
+    [leftEye updateFrame];
+    [rightEye updateFrame];
+
     // Create a new channel that is listening on our IPv4 port
     PTChannel *channel = [PTChannel channelWithDelegate:self];
-    [channel listenOnPort:PTExampleProtocolIPv4PortNumber IPv4Address:INADDR_LOOPBACK callback:^(NSError *error) {
+    [channel listenOnPort:PTProtocolIPv4PortNumber IPv4Address:INADDR_LOOPBACK callback:^(NSError *error) {
         if (error) {
-            [self appendOutputMessage:[NSString stringWithFormat:@"Failed to listen on 127.0.0.1:%d: %@", PTExampleProtocolIPv4PortNumber, error]];
+            [self appendOutputMessage:[NSString stringWithFormat:@"Failed to listen on 127.0.0.1:%d: %@", PTProtocolIPv4PortNumber, error]];
         } else {
-            [self appendOutputMessage:[NSString stringWithFormat:@"Listening on 127.0.0.1:%d", PTExampleProtocolIPv4PortNumber]];
+            [self appendOutputMessage:[NSString stringWithFormat:@"Listening on 127.0.0.1:%d", PTProtocolIPv4PortNumber]];
             self->serverChannel_ = channel;
         }
     }];
@@ -71,22 +88,21 @@ UITextFieldDelegate
                           [NSNumber numberWithDouble:screen.scale], @"screenScale",
                           nil];
     dispatch_data_t payload = [info createReferencingDispatchData];
-    [peerChannel_ sendFrameOfType:PTExampleFrameTypeDeviceInfo tag:PTFrameNoTag withPayload:(NSData *)payload callback:^(NSError *error) {
+    [peerChannel_ sendFrameOfType:PTDeviceInfo tag:PTFrameNoTag withPayload:(NSData *)payload callback:^(NSError *error) {
         if (error) {
-            NSLog(@"Failed to send PTExampleFrameTypeDeviceInfo: %@", error);
+            NSLog(@"Failed to send PTDeviceInfo: %@", error);
         }
     }];
 }
 
 #pragma mark - PTChannelDelegate
 
-// Invoked to accept an incoming frame on a channel. Reply NO ignore the
-// incoming frame. If not implemented by the delegate, all frames are accepted.
+// Invoked to accept an incoming frame on a channel. Reply NO ignore the incoming frame. If not implemented by the delegate, all frames are accepted.
 - (BOOL)ioFrameChannel:(PTChannel*)channel shouldAcceptFrameOfType:(uint32_t)type tag:(uint32_t)tag payloadSize:(uint32_t)payloadSize {
     if (channel != peerChannel_) {
         // A previous channel that has been canceled but not yet ended. Ignore.
         return NO;
-    } else if (type != PTDesktopFrame && type != PTExampleFrameTypeDeviceInfo) {
+    } else if (type != PTDesktopFrame && type != PTDeviceInfo) {
         NSLog(@"Unexpected frame of type %u", type);
         [channel close];
         return NO;
@@ -95,13 +111,62 @@ UITextFieldDelegate
     }
 }
 
+// https://stackoverflow.com/questions/8425012/is-there-a-practical-way-to-compress-nsdata
+- (NSData *)gzipInflate:(NSData*)data {
+    if ([data length] == 0) return data;
+
+    unsigned full_length = [data length];
+    unsigned half_length = [data length] / 2;
+
+    NSMutableData *decompressed = [NSMutableData dataWithLength: full_length + half_length];
+    BOOL done = NO;
+    int status;
+
+    z_stream strm;
+    strm.next_in = (Bytef *)[data bytes];
+    strm.avail_in = [data length];
+    strm.total_out = 0;
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+
+    if (inflateInit2(&strm, (15+32)) != Z_OK) return nil;
+    while (!done) {
+        // Make sure we have enough room and reset the lengths.
+        if (strm.total_out >= [decompressed length])
+            [decompressed increaseLengthBy: half_length];
+        strm.next_out = [decompressed mutableBytes] + strm.total_out;
+        strm.avail_out = [decompressed length] - strm.total_out;
+
+        // Inflate another chunk.
+        status = inflate (&strm, Z_SYNC_FLUSH);
+        if (status == Z_STREAM_END) done = YES;
+        else if (status != Z_OK) break;
+    }
+    if (inflateEnd (&strm) != Z_OK) return nil;
+
+    // Set real length
+    if (done) {
+        [decompressed setLength: strm.total_out];
+        return [NSData dataWithData: decompressed];
+    }
+    else return nil;
+}
+
 // Invoked when a new frame has arrived on a channel.
 - (void)ioFrameChannel:(PTChannel*)channel didReceiveFrameOfType:(uint32_t)type tag:(uint32_t)tag payload:(NSData *)payload {
     if (type == PTDesktopFrame) {
+        NSData* decompressedData = [self gzipInflate:payload];
+
         CMSampleBufferRef sampleBuffer;
-        [self createCMSampleBuffer:&sampleBuffer fromData:payload];
-        [_leftEye setImage:[self imageFromSampleBuffer:sampleBuffer]];
-        [_rightEye setImage:[self imageFromSampleBuffer:sampleBuffer]];
+        [self createCMSampleBuffer:&sampleBuffer fromData:decompressedData];
+        
+        // Tell sampleBuffer to display immediately
+        CFArrayRef attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, YES);
+        CFMutableDictionaryRef dict = (CFMutableDictionaryRef)CFArrayGetValueAtIndex(attachments, 0);
+        CFDictionarySetValue(dict, kCMSampleAttachmentKey_DisplayImmediately, kCFBooleanTrue);
+
+        [leftEye enqueueSampleBuffer:sampleBuffer];
+        [rightEye enqueueSampleBuffer:sampleBuffer];
         CFRelease(sampleBuffer);
     }
 }
@@ -114,15 +179,16 @@ UITextFieldDelegate
     long height = 0;
     OSType pixelFormat = 0;
     
-    [data getBytes:&width range:NSMakeRange(0, sizeof(long))];
-    [data getBytes:&height range:NSMakeRange(sizeof(long), sizeof(long))];
-    [data getBytes:&pixelFormat range:NSMakeRange(sizeof(long) * 2, sizeof(UInt32))];
+    int widthHeightSize = sizeof(long);
+    int pixelFormatSize = sizeof(UInt32);
+    
+    [data getBytes:&width range:NSMakeRange(0, widthHeightSize)];
+    [data getBytes:&height range:NSMakeRange(widthHeightSize, widthHeightSize)];
+    [data getBytes:&pixelFormat range:NSMakeRange(widthHeightSize * 2, pixelFormatSize)];
     
     // Create an empty pixel buffer
     CVPixelBufferRef pixelBuffer;
-    err = CVPixelBufferCreate(kCFAllocatorDefault, width, height,
-                              pixelFormat, nil,
-                              &pixelBuffer);
+    err = CVPixelBufferCreate(kCFAllocatorDefault, width, height, pixelFormat, (__bridge CFDictionaryRef) @{(id)kCVPixelBufferIOSurfacePropertiesKey: @{}}, &pixelBuffer);
     if (err != noErr) {
         NSLog(@"CVPixelBufferCreate err %d", err);
         return;
@@ -130,11 +196,9 @@ UITextFieldDelegate
     
     // Generate the video format description from that pixel buffer
     CMFormatDescriptionRef format;
-    err = CMVideoFormatDescriptionCreateForImageBuffer(NULL, pixelBuffer,
-                                                       &format);
+    err = CMVideoFormatDescriptionCreateForImageBuffer(NULL, pixelBuffer, &format);
     if (err != noErr) {
-        NSLog(@"CMVideoFormatDescriptionCreateForImageBuffer err %d",
-              err);
+        NSLog(@"CMVideoFormatDescriptionCreateForImageBuffer err %d", err);
         return;
     }
     
@@ -164,7 +228,6 @@ UITextFieldDelegate
     
     CVPixelBufferUnlockBaseAddress(pixelBuffer, 0);
     
-    // TODO change
     uint64_t timestampNanos = (uint64_t)([[NSDate date] timeIntervalSince1970] * 1000.0 * 1000.0 * 1000.0);
     uint32_t fpsDenominator = 1;
     uint32_t fpsNumerator = 30;
@@ -173,12 +236,10 @@ UITextFieldDelegate
     CMSampleTimingInfo timing;
     timing.duration =
     CMTimeMake(fpsDenominator * scale, fpsNumerator * scale);
-    timing.presentationTimeStamp = CMTimeMake(
-                                              (timestampNanos / (double)NSEC_PER_SEC) * scale, scale);
+    timing.presentationTimeStamp = CMTimeMake((timestampNanos / (double)NSEC_PER_SEC) * scale, scale);
     timing.decodeTimeStamp = kCMTimeInvalid;
     
-    err = CMSampleBufferCreateReadyWithImageBuffer(kCFAllocatorDefault,
-                                                   pixelBuffer, format, &timing, sampleBuffer);
+    err = CMSampleBufferCreateReadyWithImageBuffer(kCFAllocatorDefault, pixelBuffer, format, &timing, sampleBuffer);
     CFRelease(format);
     CFRelease(pixelBuffer);
     
@@ -188,27 +249,7 @@ UITextFieldDelegate
     }
 }
 
-// https://stackoverflow.com/questions/14383932/convert-cmsamplebufferref-to-uiimage
--(UIImage *) imageFromSampleBuffer:(CMSampleBufferRef)samImageBuff
-{
-    CVImageBufferRef imageBuffer =
-    CMSampleBufferGetImageBuffer(samImageBuff);
-    CIImage *ciImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
-    CIContext *temporaryContext = [CIContext contextWithOptions:nil];
-    CGImageRef videoImage = [temporaryContext
-                             createCGImage:ciImage
-                             fromRect:CGRectMake(0, 0,
-                                                 CVPixelBufferGetWidth(imageBuffer),
-                                                 CVPixelBufferGetHeight(imageBuffer))];
-    
-    UIImage *image = [[UIImage alloc] initWithCGImage:videoImage];
-    CGImageRelease(videoImage);
-    return image;
-}
-
-
-// Invoked when the channel closed. If it closed because of an error, *error* is
-// a non-nil NSError object.
+// Invoked when the channel closed. If it closed because of an error, *error* is a non-nil NSError object.
 - (void)ioFrameChannel:(PTChannel*)channel didEndWithError:(NSError*)error {
     if (error) {
         [self appendOutputMessage:[NSString stringWithFormat:@"%@ ended with error: %@", channel, error]];
@@ -217,17 +258,14 @@ UITextFieldDelegate
     }
 }
 
-// For listening channels, this method is invoked when a new connection has been
-// accepted.
+// For listening channels, this method is invoked when a new connection has been accepted.
 - (void)ioFrameChannel:(PTChannel*)channel didAcceptConnection:(PTChannel*)otherChannel fromAddress:(PTAddress*)address {
-    // Cancel any other connection. We are FIFO, so the last connection
-    // established will cancel any previous connection and "take its place".
+    // Cancel any other connection. We are FIFO, so the last connection established will cancel any previous connection and "take its place".
     if (peerChannel_) {
         [peerChannel_ cancel];
     }
     
-    // Weak pointer to current connection. Connection objects live by themselves
-    // (owned by its parent dispatch queue) until they are closed.
+    // Weak pointer to current connection. Connection objects live by themselves (owned by its parent dispatch queue) until they are closed.
     peerChannel_ = otherChannel;
     peerChannel_.userInfo = address;
     [self appendOutputMessage:[NSString stringWithFormat:@"Connected to %@", address]];
@@ -235,6 +273,5 @@ UITextFieldDelegate
     // Send some information about ourselves to the other end
     [self sendDeviceInfo];
 }
-
 
 @end
