@@ -4,6 +4,7 @@
 #import <peertalk/PTUSBHub.h>
 #import <QuartzCore/QuartzCore.h>
 #import "zlib.h"
+#import <VideoToolbox/VideoToolbox.h>
 
 @interface AppDelegate () {
     NSNumber *connectingToDeviceID_;
@@ -15,6 +16,8 @@
     PTChannel *connectedChannel_;
     NSDictionary *consoleTextAttributes_;
     NSDictionary *consoleStatusTextAttributes_;
+    long currentIndex;
+    long highestIndex;
 }
 
 @property (readonly) NSNumber *connectedDeviceID;
@@ -253,16 +256,19 @@
 
 // Credit: https://stackoverflow.com/questions/12242513/how-to-get-real-time-video-stream-from-iphone-camera-and-send-it-to-server
 -(void) captureOutput:(AVCaptureOutput*)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection*)connection {
+    currentIndex++;
     if (connectedChannel_) {
-        NSMutableData *data = [[NSMutableData alloc] init];
-        [self imageBuffer:sampleBuffer toData:data];
-        NSData* compressedData = [self gzipDeflate:data];
-        [connectedChannel_ sendFrameOfType:PTDesktopFrame tag:PTFrameNoTag withPayload:compressedData callback:^(NSError *error) {
-            if (error) {
-                NSLog(@"Failed to send frame: %@", error);
-            }
-        }];
+        NSMutableData *h264Data = [[NSMutableData alloc] init];
+        [self compressBuffer:sampleBuffer toData:h264Data frameIndex:currentIndex];
     }
+}
+
+-(void)sendMessageWithData:(NSData *)data {
+    [connectedChannel_ sendFrameOfType:PTDesktopFrame tag:PTFrameNoTag withPayload:data callback:^(NSError *error) {
+        if (error) {
+            NSLog(@"Failed to send frame: %@", error);
+        }
+    }];
 }
 
 // https://stackoverflow.com/questions/8425012/is-there-a-practical-way-to-compress-nsdata
@@ -321,9 +327,9 @@
 - (BOOL)createCaptureSession {
     /* Create a capture session. */
     self.captureSession = [[AVCaptureSession alloc] init];
-    if ([self.captureSession canSetSessionPreset:AVCaptureSessionPresetHigh]) {
+    if ([self.captureSession canSetSessionPreset:AVCaptureSessionPreset1920x1080]) {
         /* Specifies capture settings suitable for high quality video and audio output. */
-        [self.captureSession setSessionPreset:AVCaptureSessionPresetHigh];
+        [self.captureSession setSessionPreset:AVCaptureSessionPreset1920x1080];
     }
     
     /* Add the main display as a capture input. */
@@ -366,6 +372,46 @@
                         contextInfo:NULL];
 }
 
+- (void)compressBuffer:(CMSampleBufferRef)sampleBuffer toData:(NSData *)data frameIndex:(int)frameIndex {
+    CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer);
+    CMVideoDimensions videoDimensions = CMVideoFormatDescriptionGetDimensions(formatDescription);
+
+    static VTCompressionSessionRef compressionSession;
+
+    if (compressionSession == NULL) {
+        VTCompressionSessionCreate
+        (NULL,
+         videoDimensions.width,
+         videoDimensions.height,
+         kCMVideoCodecType_H264,
+         NULL,
+         NULL,
+         NULL,
+         NULL,
+         NULL,
+         &compressionSession);
+    }
+
+    CVImageBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
+
+    CMTime presentationTimestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
+    CMTime duration = CMSampleBufferGetDuration(sampleBuffer);
+
+    VTCompressionSessionEncodeFrameWithOutputHandler
+    (compressionSession,
+     pixelBuffer,
+     presentationTimestamp,
+     duration,
+     NULL,
+     NULL,
+     ^(OSStatus status,
+       VTEncodeInfoFlags infoFlags,
+       CMSampleBufferRef  _Nullable compressedSample) {
+        [self h264ImageBuffer:compressedSample toData:data frameIndex:frameIndex];
+     });
+
+}
+
 // Credit: https://stackoverflow.com/questions/18811917/nsdata-or-bytes-from-cmsamplebufferref
 - (void) imageBuffer:(CMSampleBufferRef)source toData:(NSMutableData *)data {
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(source);
@@ -386,6 +432,51 @@
     [data appendBytes:src_buff length:bytesPerRow * height];
     
     CVPixelBufferUnlockBaseAddress(imageBuffer, 0);
+}
+
+// https://github.com/ideawu/ios_live_streaming/blob/c7262d92c0e0f00e4dddaa8d4b745e1640f46f54/irtc/h264/VideoEncoder.m
+- (void) h264ImageBuffer:(CMSampleBufferRef)sampleBuffer toData:(NSData *)data frameIndex:(int)frameIndex {
+    CMFormatDescriptionRef format = CMSampleBufferGetFormatDescription(sampleBuffer);
+    size_t sps_size, pps_size;
+    const uint8_t* sps, *pps;
+
+    // get sps/pps without start code
+    CMVideoFormatDescriptionGetH264ParameterSetAtIndex(format, 0, &sps, &sps_size, NULL, NULL);
+    CMVideoFormatDescriptionGetH264ParameterSetAtIndex(format, 1, &pps, &pps_size, NULL, NULL);
+
+    NSData *sps_data = [NSData dataWithBytes:sps length:sps_size];
+    NSData *pps_data = [NSData dataWithBytes:pps length:pps_size];
+
+    UInt8 *buf;
+    size_t size;
+    CMBlockBufferRef blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer);
+    CMBlockBufferGetDataPointer(blockBuffer, 0, NULL, &size, (char **)&buf);
+
+    // strip leading SEIs
+    while(size > 0){
+        uint32_t len = (buf[0]<<24) + (buf[1]<<16) + (buf[2]<<8) + buf[3];
+        int type = buf[4] & 0x1f;
+        if(type == 6){ // SEI
+            buf += 4 + len;
+            size -= 4 + len;
+        }else{
+            break;
+        }
+    }
+    if(size >= 5){
+        NSMutableData *finalData = [[NSMutableData alloc] init];
+        [finalData appendBytes:&sps_size length:sizeof(size_t)];
+        [finalData appendBytes:&pps_size length:sizeof(size_t)];
+        [finalData appendBytes:sps length:sps_size];
+        [finalData appendBytes:pps length:pps_size];
+        [finalData appendBytes:buf length:size];
+
+        if (frameIndex > highestIndex) {
+            [self sendMessageWithData:finalData];
+            highestIndex = frameIndex;
+            NSLog(@"Finished frame %d", frameIndex);
+        }
+    }
 }
 
 @end

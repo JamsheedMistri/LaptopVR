@@ -160,20 +160,102 @@
 // Invoked when a new frame has arrived on a channel.
 - (void)ioFrameChannel:(PTChannel*)channel didReceiveFrameOfType:(uint32_t)type tag:(uint32_t)tag payload:(NSData *)payload {
     if (type == PTDesktopFrame) {
-        NSData* decompressedData = [self gzipInflate:payload];
-
         CMSampleBufferRef sampleBuffer;
-        [self createCMSampleBuffer:&sampleBuffer fromData:decompressedData];
+        sampleBuffer = [self createh264SampleBufferFromFrame:payload];
         
         // Tell sampleBuffer to display immediately
         CFArrayRef attachments = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, YES);
         CFMutableDictionaryRef dict = (CFMutableDictionaryRef)CFArrayGetValueAtIndex(attachments, 0);
         CFDictionarySetValue(dict, kCMSampleAttachmentKey_DisplayImmediately, kCFBooleanTrue);
 
+        [leftEye updateFrameWidth:1920 height:1080];
+        [rightEye updateFrameWidth:1920 height:1080];
+        
         [leftEye enqueueSampleBuffer:sampleBuffer];
         [rightEye enqueueSampleBuffer:sampleBuffer];
         CFRelease(sampleBuffer);
     }
+}
+
+// https://github.com/ideawu/ios_live_streaming/blob/c7262d92c0e0f00e4dddaa8d4b745e1640f46f54/irtc/h264/VideoDecoder.m
+- (CMSampleBufferRef)createh264SampleBufferFromFrame:(NSData *)data {
+    
+    size_t sps_size = 0;
+    size_t pps_size = 0;
+    
+        
+    [data getBytes:&sps_size range:NSMakeRange(0, sizeof(size_t))];
+    [data getBytes:&pps_size range:NSMakeRange(sizeof(size_t), sizeof(size_t))];
+    
+    NSData* sps = [NSData dataWithBytes:[data bytes] + (sizeof(size_t) * 2) length:sps_size];
+    NSData* pps = [NSData dataWithBytes:[data bytes] + ((sizeof(size_t) * 2) + sps_size) length:pps_size];
+    
+    uint8_t*  arr[2] = {(uint8_t*)sps.bytes, (uint8_t*)pps.bytes};
+    size_t sizes[2] = {sps.length, sps.length};
+    
+    CMFormatDescriptionRef format;
+    OSStatus formatErr;
+    formatErr = CMVideoFormatDescriptionCreateFromH264ParameterSets(kCFAllocatorDefault, 2,
+                                                                 (const uint8_t *const*)arr,
+                                                                 sizes, 4,
+                                                                 &format);
+
+    float pitch = [motionManager updateAttitudeAndGetPitch];
+    [leftEye updatePitch:pitch];
+    [rightEye updatePitch:pitch];
+    
+    long offset = (sizeof(size_t) * 2) + sps_size + pps_size;
+    NSData *frame = [NSData dataWithBytes:[data bytes] + offset length:data.length - offset];
+    
+    CMSampleBufferRef sampleBuffer = NULL;
+    CMBlockBufferRef blockBuffer = NULL;
+    size_t length = frame.length;
+    OSStatus err;
+    err = CMBlockBufferCreateWithMemoryBlock(NULL,
+                                             NULL,
+                                             length,
+                                             kCFAllocatorDefault,
+                                             NULL,
+                                             0,
+                                             length,
+                                             kCMBlockBufferAssureMemoryNowFlag,
+                                             &blockBuffer);
+    if (err == 0) {
+        err = CMBlockBufferReplaceDataBytes(frame.bytes, blockBuffer, 0, length);
+    }
+    
+    if (err == 0) {
+        uint64_t timestampNanos = (uint64_t)([[NSDate date] timeIntervalSince1970] * 1000.0 * 1000.0 * 1000.0);
+        uint32_t fpsDenominator = 1;
+        uint32_t fpsNumerator = 30;
+
+        CMTimeScale scale = 600;
+        CMSampleTimingInfo timing;
+        timing.duration =
+        CMTimeMake(fpsDenominator * scale, fpsNumerator * scale);
+        timing.presentationTimeStamp = CMTimeMake((timestampNanos / (double)NSEC_PER_SEC) * scale, scale);
+        timing.decodeTimeStamp = kCMTimeInvalid;
+        
+
+
+        err = CMSampleBufferCreate(kCFAllocatorDefault,
+                                   blockBuffer,
+                                   true, NULL, NULL,
+                                   format,
+                                   1, // num samples
+                                   1, &timing,
+                                   1, &length,
+                                   &sampleBuffer);
+    }
+    if (err != 0) {
+        NSError *error = [NSError errorWithDomain:NSOSStatusErrorDomain code:err userInfo:nil];
+    }
+
+    if (blockBuffer) {
+        CFRelease(blockBuffer);
+    }
+
+    return sampleBuffer;
 }
 
 // https://github.com/Mikael-Lovqvist/obs-studio/blob/3cd5742be5168f625558c14c1b38fedf23116277/plugins/mac-virtualcam/src/dal-plugin/CMSampleBufferUtils.mm
