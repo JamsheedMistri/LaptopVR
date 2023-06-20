@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		512C9E492795C11600771C7B /* MotionManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 512C9E482795C11600771C7B /* MotionManager.m */; };
 		5173119727258A070063C066 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5173119627258A070063C066 /* Images.xcassets */; };
-		5189CCB627919FC4000A13B1 /* libz.1.2.11.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 5189CCB527919FC4000A13B1 /* libz.1.2.11.tbd */; };
 		51F4D528279558A1001B397C /* StreamLayerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 51F4D527279558A1001B397C /* StreamLayerViewController.m */; };
 		6A64AAF01526050D0065BF86 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 6A64AAEF1526050D0065BF86 /* main.m */; };
 		6A64AAF41526050D0065BF86 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 6A64AAF31526050D0065BF86 /* AppDelegate.m */; };
@@ -57,7 +56,6 @@
 		512C9E472795C11600771C7B /* MotionManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MotionManager.h; sourceTree = "<group>"; };
 		512C9E482795C11600771C7B /* MotionManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MotionManager.m; sourceTree = "<group>"; };
 		5173119627258A070063C066 /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
-		5189CCB527919FC4000A13B1 /* libz.1.2.11.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.1.2.11.tbd; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS15.2.sdk/usr/lib/libz.1.2.11.tbd; sourceTree = DEVELOPER_DIR; };
 		518C98DF272409CC00C52220 /* PTProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PTProtocol.h; sourceTree = "<group>"; };
 		51F4D526279558A1001B397C /* StreamLayerViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = StreamLayerViewController.h; sourceTree = "<group>"; };
 		51F4D527279558A1001B397C /* StreamLayerViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = StreamLayerViewController.m; sourceTree = "<group>"; };
@@ -90,7 +88,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5189CCB627919FC4000A13B1 /* libz.1.2.11.tbd in Frameworks */,
 				AB6C998C257BB75600D5624E /* Peertalk.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -173,7 +170,6 @@
 		AB6C99DC257BD89600D5624E /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				5189CCB527919FC4000A13B1 /* libz.1.2.11.tbd */,
 				AB6C9A3D257BDCF200D5624E /* QuartzCore.framework */,
 				AB6C9A3B257BDCEB00D5624E /* Cocoa.framework */,
 			);
@@ -331,9 +327,12 @@
 				CLANG_ENABLE_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				DEVELOPMENT_TEAM = L7ZWHMSG85;
-				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				INFOPLIST_FILE = LaptopVR/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -354,9 +353,12 @@
 				CLANG_ENABLE_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				DEVELOPMENT_TEAM = L7ZWHMSG85;
-				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)",
+				);
 				INFOPLIST_FILE = LaptopVR/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 14.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

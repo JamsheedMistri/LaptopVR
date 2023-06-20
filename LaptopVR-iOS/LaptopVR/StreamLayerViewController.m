@@ -50,7 +50,7 @@
 }
 
 - (void)updatePitch:(float)pitch {
-    float SENSITIVITY = 5;
+    float SENSITIVITY = 12;
     
     pitch *= SENSITIVITY;
     if (pitch > M_PI / 2) {

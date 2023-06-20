@@ -2,8 +2,8 @@
 #import "PTProtocol.h"
 #import <peertalk/PTProtocol.h>
 #import <peertalk/PTUSBHub.h>
-#import <QuartzCore/QuartzCore.h>
-#import "zlib.h"
+#import <VideoToolbox/VideoToolbox.h>
+#import "H264Packet.h"
 
 @interface AppDelegate () {
     NSNumber *connectingToDeviceID_;
@@ -22,7 +22,6 @@
 @property (weak) IBOutlet NSTextField *infoLabel;
 @property (weak) IBOutlet NSButton *startButton;
 
-- (void)presentMessage:(NSString*)message isStatus:(BOOL)isStatus;
 - (void)startListeningForDevices;
 - (void)didDisconnectFromDevice:(NSNumber*)deviceID;
 - (void)disconnectFromCurrentChannel;
@@ -37,42 +36,48 @@
     AVCaptureVideoDataOutput *outputDevice;
     NSMutableArray *shadeWindows;
     BOOL isCurrentlyStreaming;
+    VTCompressionSessionRef compressionSession;
 }
 
 @synthesize window = window_;
 @synthesize connectedDeviceID = connectedDeviceID_;
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
-    // We use a serial queue that we toggle depending on if we are connected or not. When we are not connected to a peer, the queue is running to handle "connect" tries. When we are connected to a peer, the queue is suspended thus no longer trying to connect.
     notConnectedQueue_ = dispatch_queue_create("PTExample.notConnectedQueue", DISPATCH_QUEUE_SERIAL);
     isCurrentlyStreaming = false;
     
     // Start listening for device attached/detached notifications
     [self startListeningForDevices];
     
-    // Start trying to connect to local IPv4 port (defined in PTExampleProtocol.h)
+    // Start trying to connect to local IPv4 port
     [self enqueueConnectToLocalIPv4Port];
     
-    // Put a little message in the UI
-    [self presentMessage:@"Ready for action — connecting at will." isStatus:YES];
+    NSLog(@"Ready for action — connecting at will.");
 }
 
-- (IBAction)startStream:(id)sender {
-    if (isCurrentlyStreaming) {
-        [self.captureSession stopRunning];
-        [_startButton setTitle:@"Start LaptopVR"];
-        isCurrentlyStreaming = false;
-    } else {
-        [self createCaptureSession];
-        [self.captureSession startRunning];
-        [_startButton setTitle:@"Stop LaptopVR"];
-        isCurrentlyStreaming = true;
-    }
+- (IBAction)toggleStreamModeButtonClicked:(id)sender {
+    if (isCurrentlyStreaming) [self stopStream];
+    else [self startStream];
 }
 
-- (void)presentMessage:(NSString*)message isStatus:(BOOL)isStatus {
-    NSLog(@">> %@", message);
+- (void)startStream {
+    // Set up AVCaptureSession, VTCompressionSession, and UI
+    [self createCaptureSession];
+    [self setupVTCompressionSession];
+    [self.captureSession startRunning];
+    [_startButton setTitle:@"Stop LaptopVR"];
+    isCurrentlyStreaming = true;
 }
+
+- (void)stopStream {
+    // Clean up AVCaptureSession, VTCompressionSession, and UI
+    [self.captureSession stopRunning];
+    [self cleanupVTCompressionSession];
+    [_startButton setTitle:@"Start LaptopVR"];
+    isCurrentlyStreaming = false;
+}
+
+#pragma mark - PTChannelDelegate
 
 - (PTChannel*)connectedChannel {
     return connectedChannel_;
@@ -95,8 +100,6 @@
     }
 }
 
-#pragma mark - PTChannelDelegate
-
 - (BOOL)ioFrameChannel:(PTChannel*)channel shouldAcceptFrameOfType:(uint32_t)type tag:(uint32_t)tag payloadSize:(uint32_t)payloadSize {
     if (type != PTDeviceInfo && type != PTFrameTypeEndOfStream) {
         NSLog(@"Unexpected frame of type %u", type);
@@ -108,32 +111,31 @@
 }
 
 - (void)ioFrameChannel:(PTChannel*)channel didReceiveFrameOfType:(uint32_t)type tag:(uint32_t)tag payload:(NSData *)payload {
+    // If we received device info, update UI accordingly (device connected)
     if (type == PTDeviceInfo) {
         NSDictionary *deviceInfo = [NSData dictionaryWithContentsOfData:payload];
-        [self presentMessage:[NSString stringWithFormat:@"Connected to %@", deviceInfo.description] isStatus:YES];
+        NSString *deviceName = [deviceInfo valueForKey:@"name"];
+        NSLog(@"Connected to %@", deviceName);
         [_startButton setEnabled:true];
-        // TODO: change "device" to actual device name
-        _infoLabel.stringValue = [NSString stringWithFormat:@"Connected to device"];
+        _infoLabel.stringValue = [NSString stringWithFormat:@"Connected to %@", deviceName];
         [_startButton setTitle:@"Start LaptopVR"];
         isCurrentlyStreaming = false;
     }
 }
 
 - (void)ioFrameChannel:(PTChannel*)channel didEndWithError:(NSError*)error {
+    // Channel disconnected, update UI accordingly
     if (connectedDeviceID_ && [connectedDeviceID_ isEqualToNumber:channel.userInfo]) {
         [self didDisconnectFromDevice:connectedDeviceID_];
     }
     
     if (connectedChannel_ == channel) {
-        [self presentMessage:[NSString stringWithFormat:@"Disconnected from %@", channel.userInfo] isStatus:YES];
-        self.connectedChannel = nil;
+        NSLog(@"Disconnected from %@", channel.userInfo);
         if (isCurrentlyStreaming) {
-            [self.captureSession stopRunning];
+            [self stopStream];
         }
         [_startButton setEnabled:false];
         _infoLabel.stringValue = @"Waiting for device to connect...";
-        [_startButton setTitle:@"Start LaptopVR"];
-        isCurrentlyStreaming = false;
     }
 }
 
@@ -244,89 +246,41 @@
     }];
 }
 
+#pragma mark - AVCaptureSession delegate
+
 - (BOOL)captureOutputShouldProvideSampleAccurateRecordingStart:(nonnull AVCaptureOutput *)output { 
-    // We don't require frame accurate start when we start a recording. If we answer YES, the capture output applies outputSettings immediately when the session starts previewing, resulting in higher CPU usage and shorter battery life.
     return NO;
 }
 
-#pragma mark - Output device delegate
-
-// Credit: https://stackoverflow.com/questions/12242513/how-to-get-real-time-video-stream-from-iphone-camera-and-send-it-to-server
 -(void) captureOutput:(AVCaptureOutput*)captureOutput didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection*)connection {
-    if (connectedChannel_) {
-        NSMutableData *data = [[NSMutableData alloc] init];
-        [self imageBuffer:sampleBuffer toData:data];
-        NSData* compressedData = [self gzipDeflate:data];
-        [connectedChannel_ sendFrameOfType:PTDesktopFrame tag:PTFrameNoTag withPayload:compressedData callback:^(NSError *error) {
-            if (error) {
-                NSLog(@"Failed to send frame: %@", error);
-            }
-        }];
-    }
+    if (connectedChannel_) [self enqueueBuffer:sampleBuffer];
 }
 
-// https://stackoverflow.com/questions/8425012/is-there-a-practical-way-to-compress-nsdata
-- (NSData *)gzipDeflate:(NSData*)data {
-    if ([data length] == 0) return data;
-
-    z_stream strm;
-
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
-    strm.total_out = 0;
-    strm.next_in=(Bytef *)[data bytes];
-    strm.avail_in = [data length];
-
-    // Compresssion Levels:
-    //   Z_NO_COMPRESSION
-    //   Z_BEST_SPEED
-    //   Z_BEST_COMPRESSION
-    //   Z_DEFAULT_COMPRESSION
-
-    if (deflateInit2(&strm, Z_DEFAULT_COMPRESSION, Z_DEFLATED, (15+16), 8, Z_DEFAULT_STRATEGY) != Z_OK) return nil;
-
-    NSMutableData *compressed = [NSMutableData dataWithLength:16384];  // 16K chunks for expansion
-
-    do {
-        if (strm.total_out >= [compressed length])
-            [compressed increaseLengthBy: 16384];
-
-        strm.next_out = [compressed mutableBytes] + strm.total_out;
-        strm.avail_out = [compressed length] - strm.total_out;
-
-        deflate(&strm, Z_FINISH);
-
-    } while (strm.avail_out == 0);
-
-    deflateEnd(&strm);
-
-    [compressed setLength: strm.total_out];
-    return [NSData dataWithData:compressed];
+-(void)sendMessageWithData:(NSData *)data {
+    [connectedChannel_ sendFrameOfType:PTDesktopFrame tag:PTFrameNoTag withPayload:data callback:^(NSError *error) {
+        if (error) NSLog(@"Failed to send frame: %@", error);
+    }];
 }
-
 
 - (float)maximumScreenInputFramerate {
     Float64 minimumVideoFrameInterval = CMTimeGetSeconds([self.captureScreenInput minFrameDuration]);
     return minimumVideoFrameInterval > 0.0f ? 1.0f/minimumVideoFrameInterval : 0.0;
 }
 
-/* Set the screen input maximum frame rate. */
 - (void)setMaximumScreenInputFramerate:(float)maximumFramerate {
+    // Set the screen input maximum frame rate
     CMTime minimumFrameDuration = CMTimeMake(1, (int32_t)maximumFramerate);
-    /* Set the screen input's minimum frame duration. */
     [self.captureScreenInput setMinFrameDuration:minimumFrameDuration];
 }
 
 - (BOOL)createCaptureSession {
-    /* Create a capture session. */
+    // Create a capture session
     self.captureSession = [[AVCaptureSession alloc] init];
-    if ([self.captureSession canSetSessionPreset:AVCaptureSessionPresetHigh]) {
-        /* Specifies capture settings suitable for high quality video and audio output. */
-        [self.captureSession setSessionPreset:AVCaptureSessionPresetHigh];
+    if ([self.captureSession canSetSessionPreset:AVCaptureSessionPreset1920x1080]) {
+        [self.captureSession setSessionPreset:AVCaptureSessionPreset1920x1080];
     }
     
-    /* Add the main display as a capture input. */
+    // Add the main display as a capture input
     display = CGMainDisplayID();
     self.captureScreenInput = [[AVCaptureScreenInput alloc] initWithDisplayID:display];
     if ([self.captureSession canAddInput:self.captureScreenInput]) {
@@ -336,7 +290,7 @@
         return NO;
     }
     
-    /* Add a movie file output + delegate. */
+    // Set output device to our delegate
     outputDevice = [[AVCaptureVideoDataOutput alloc] init];
     [outputDevice setSampleBufferDelegate:self queue:dispatch_get_main_queue()];
     if ([self.captureSession canAddOutput:outputDevice]) {
@@ -345,7 +299,7 @@
         return NO;
     }
     
-    /* Register for notifications of errors during the capture session so we can display an alert. */
+    // Register for notifications of errors during the capture session so we can log them
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(captureSessionRuntimeErrorDidOccur:) name:AVCaptureSessionRuntimeErrorNotification object:self.captureSession];
     
     return YES;
@@ -353,39 +307,90 @@
 
 - (void)captureSessionRuntimeErrorDidOccur:(NSNotification *)notification {
     NSError *error = [notification userInfo][AVCaptureSessionErrorKey];
-    NSAlert *alert = [[NSAlert alloc] init];
-    [alert setAlertStyle:NSAlertStyleCritical];
-    [alert setMessageText:[error localizedDescription]];
-    NSString *informativeText = [error localizedRecoverySuggestion];
-    informativeText = informativeText ? informativeText : [error localizedFailureReason]; // No recovery suggestion, then at least tell the user why it failed.
-    [alert setInformativeText:informativeText];
-    
-    [alert beginSheetModalForWindow:window_
-                      modalDelegate:self
-                     didEndSelector:@selector(alertDidEnd:returnCode:contextInfo:)
-                        contextInfo:NULL];
+    NSLog(@"Error: %@ ", [error userInfo]);
 }
 
-// Credit: https://stackoverflow.com/questions/18811917/nsdata-or-bytes-from-cmsamplebufferref
-- (void) imageBuffer:(CMSampleBufferRef)source toData:(NSMutableData *)data {
-    CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(source);
-    CVPixelBufferLockBaseAddress(imageBuffer, 0);
+#pragma mark - VideoToolbox encoder
+
+- (void)setupVTCompressionSession {
+    NSDictionary<NSString *, id> * encoderSpecification = @{
+        (NSString *) kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder: @YES,
+        (NSString *) kVTCompressionPropertyKey_RealTime: @YES,
+        (NSString *) kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality: @YES,
+        (NSString *) kVTCompressionPropertyKey_AllowFrameReordering: @NO,
+        (NSString *) kVTCompressionPropertyKey_ExpectedFrameRate: @15,
+    };
     
-    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
-    long width = CVPixelBufferGetWidth(imageBuffer);
-    long height = CVPixelBufferGetHeight(imageBuffer);
-    OSType pixelBufferType = CVPixelBufferGetPixelFormatType(imageBuffer);
-    void *src_buff = CVPixelBufferGetBaseAddress(imageBuffer);
+    if (@available(macOS 12.1, *)) {
+        encoderSpecification = @{
+            (NSString *) kVTVideoEncoderSpecification_EnableLowLatencyRateControl: @YES,
+            (NSString *) kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder: @YES,
+            (NSString *) kVTCompressionPropertyKey_RealTime: @YES,
+            (NSString *) kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality: @YES,
+            (NSString *) kVTCompressionPropertyKey_AllowFrameReordering: @NO,
+            (NSString *) kVTCompressionPropertyKey_ExpectedFrameRate: @15,
+        };
+    }
     
-    int widthHeightSize = sizeof(long);
-    int pixelFormatSize = sizeof(UInt32);
+    if (compressionSession == NULL) {
+        dispatch_queue_t setupVTCompressionSessionQueue = dispatch_queue_create([@"setupVTCompressionSession" UTF8String], nil);
+        dispatch_async(setupVTCompressionSessionQueue, ^{
+            VTCompressionSessionCreate
+            (NULL,
+             1920,
+             1080,
+             kCMVideoCodecType_H264,
+             (__bridge CFDictionaryRef) encoderSpecification,
+             NULL,
+             NULL,
+             compressionOutputCallback,
+             (__bridge void * _Nullable)(self),
+             &(self->compressionSession));
+        });
+    }
+}
+
+- (void)cleanupVTCompressionSession {
+    if (compressionSession) {
+        VTCompressionSessionCompleteFrames(compressionSession, kCMTimeInvalid);
+        VTCompressionSessionInvalidate(compressionSession);
+        CFRelease(compressionSession);
+        compressionSession = NULL;
+    }
+}
+
+- (void)enqueueBuffer:(CMSampleBufferRef)sampleBuffer {
+    CVImageBufferRef pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     
-    [data appendBytes:&width length:widthHeightSize];
-    [data appendBytes:&height length:widthHeightSize];
-    [data appendBytes:&pixelBufferType length:pixelFormatSize];
-    [data appendBytes:src_buff length:bytesPerRow * height];
+    CMTime presentationTimestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
+    CMTime duration = CMSampleBufferGetDuration(sampleBuffer);
     
-    CVPixelBufferUnlockBaseAddress(imageBuffer, 0);
+    VTCompressionSessionEncodeFrame
+    (compressionSession,
+     pixelBuffer,
+     presentationTimestamp,
+     duration,
+     NULL,
+     NULL,
+     NULL);
+}
+
+static void compressionOutputCallback(void *outputCallbackRefCon, void *sourceFrameRefCon, OSStatus status, VTEncodeInfoFlags infoFlags, CMSampleBufferRef sampleBuffer) {
+    AppDelegate *weakSelf = (__bridge AppDelegate *)outputCallbackRefCon;
+    // Send H264 encoded frame for serialization and sending
+    if (status == noErr) return [weakSelf sendH264SampleBuffer:sampleBuffer];
+}
+
+#pragma mark - VideoToolbox -> PeerTalk bridge
+
+- (void)sendH264SampleBuffer:(CMSampleBufferRef)sampleBuffer {
+    if (!sampleBuffer) return;
+    
+    // Serialize H264 compressed frame
+    NSData *packet = [H264Packet sampleBufferToH264Packet:sampleBuffer];
+    
+    // Send to PeerTalk
+    [self sendMessageWithData:packet];
 }
 
 @end
