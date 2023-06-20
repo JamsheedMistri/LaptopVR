@@ -7,7 +7,6 @@ static const NSTimeInterval PTAppReconnectDelay = 1.0;
 @interface AppDelegate : NSObject <NSApplicationDelegate, PTChannelDelegate, AVCaptureFileOutputDelegate, AVCaptureVideoDataOutputSampleBufferDelegate>
 
 @property (assign) IBOutlet NSWindow *window;
-@property (assign) IBOutlet NSTextView *outputTextView;
 
 @property (strong) AVCaptureSession *captureSession;
 @property (strong) AVCaptureScreenInput *captureScreenInput;
