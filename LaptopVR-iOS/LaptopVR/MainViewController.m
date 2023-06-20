@@ -42,7 +42,8 @@
     
     if (@available(iOS 11.0, *)) {
         // In order to get the notch height in landscape mode, take the max of the 2 safe areas
-        notchHeight = MAX(UIApplication.sharedApplication.windows.firstObject.safeAreaInsets.left, UIApplication.sharedApplication.windows.firstObject.safeAreaInsets.right);
+        UIEdgeInsets safeAreaInsets = ((UIWindowScene *)([UIApplication sharedApplication].connectedScenes.allObjects[0])).windows.firstObject.safeAreaInsets;
+        notchHeight = MAX(safeAreaInsets.left, safeAreaInsets.right);
     }
     
     // From some reason, x & y origin coordinates for CGRect need to be halved to display correctly on iOS
