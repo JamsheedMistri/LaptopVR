@@ -15,15 +15,20 @@
     [self.motionManager startDeviceMotionUpdates];
 }
 
-- (float)updateAttitudeAndGetPitch {
+- (void)updateAttitudeAndGetPitch:(float *)pitch andRoll:(float *)roll {
     if (self.referenceAttitude == nil) {
         self.referenceAttitude = self.motionManager.deviceMotion.attitude;
     }
 
     CMAttitude *attitude = self.motionManager.deviceMotion.attitude;
     [attitude multiplyByInverseOfAttitude:self.referenceAttitude];
+    
+    *pitch = attitude.pitch;
+    *roll = attitude.roll;
+}
 
-    return attitude.pitch;
+- (void)updateReferenceFrame {
+    self.referenceAttitude = self.motionManager.deviceMotion.attitude;
 }
 
 

@@ -14,6 +14,7 @@
 @property (strong) CMAttitude *referenceAttitude;
 
 - (void)enableMotion;
-- (float)updateAttitudeAndGetPitch;
+- (void)updateAttitudeAndGetPitch:(float *)pitch andRoll:(float *)roll;
+- (void)updateReferenceFrame;
 
 @end

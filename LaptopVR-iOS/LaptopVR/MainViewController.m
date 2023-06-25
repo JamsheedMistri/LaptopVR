@@ -294,9 +294,11 @@
     [leftEye updateFrameWidth:1920 height:1080];
     [rightEye updateFrameWidth:1920 height:1080];
     
-    float pitch = [motionManager updateAttitudeAndGetPitch];
-    [leftEye updatePitch:pitch];
-    [rightEye updatePitch:pitch];
+    float pitch;
+    float roll;
+    [motionManager updateAttitudeAndGetPitch:&pitch andRoll:&roll];
+    [leftEye updatePitch:pitch andRoll:roll forMotionManager:motionManager];
+    [rightEye updatePitch:pitch andRoll:roll forMotionManager:motionManager];
     
     [leftEye enqueueSampleBuffer:sampleBuffer];
     [rightEye enqueueSampleBuffer:sampleBuffer];
