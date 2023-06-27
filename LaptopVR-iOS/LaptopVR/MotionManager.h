@@ -12,9 +12,12 @@
 
 @property (strong) CMMotionManager *motionManager;
 @property (strong) CMAttitude *referenceAttitude;
+@property (nonatomic, assign) float pitchOrigin;
+@property (nonatomic, assign) float rollOrigin;
 
 - (void)enableMotion;
-- (void)updateAttitudeAndGetPitch:(float *)pitch andRoll:(float *)roll;
+- (void)processMotionUpdatesAndReturnPitchScaleFactor:(float *)pitchScaleFactor
+                                   andRollScaleFactor:(float *)rollScaleFactor;
 - (void)updateReferenceFrame;
 
 @end

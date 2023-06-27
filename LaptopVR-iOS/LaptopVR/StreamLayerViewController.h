@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)enqueueSampleBuffer:(CMSampleBufferRef)sampleBuffer;
 - (void)updateFrameWidth:(int)width height:(int)height;
-- (void)updatePitch:(float)pitch andRoll:(float)roll forMotionManager:(MotionManager *)motionManager;
+- (void)updateScaleFactorForPitch:(float)pitchScaleFactor andRoll:(float)rollScaleFactor;
 
 @end
 

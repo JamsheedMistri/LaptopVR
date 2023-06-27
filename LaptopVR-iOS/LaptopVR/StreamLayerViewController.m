@@ -46,34 +46,9 @@
     height = frameHeight;
 }
 
-- (void)updatePitch:(float)pitch andRoll:(float)roll forMotionManager:(MotionManager*)motionManager{
-    float SENSITIVITY = 12;
-    
-    pitch *= SENSITIVITY;
-    roll *= SENSITIVITY;
-    
-    if (pitch > M_PI / 2) {
-        pitch = M_PI / 2;
-        [motionManager updateReferenceFrame];
-    } else if (pitch < -M_PI / 2) {
-        pitch = -M_PI / 2;
-        [motionManager updateReferenceFrame];
-    }
-    
-    if (roll > M_PI / 2) {
-        roll = M_PI / 2;
-        [motionManager updateReferenceFrame];
-    } else if (roll < -M_PI / 2) {
-        roll = -M_PI / 2;
-        [motionManager updateReferenceFrame];
-    }
-    
-    // Scale factor of how far we're looking left or right, -1 is leftmost and +1 is rightmost
-    float pitchScaleFactor = pitch / (M_PI / 2);
+- (void)updateScaleFactorForPitch:(float)pitchScaleFactor andRoll:(float)rollScaleFactor {
     int maximumPitchDeltaFromCenter = (videoLayer.frame.size.width - subview.bounds.size.width);
     int pitchDeltaFromCenter = pitchScaleFactor * maximumPitchDeltaFromCenter;
-    
-    float rollScaleFactor = roll / (M_PI / 2);
     int maximumRollDeltaFromCenter = videoLayer.frame.size.height / 2;
     
     CGRect frame = videoLayer.frame;

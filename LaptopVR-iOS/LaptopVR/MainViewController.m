@@ -294,11 +294,14 @@
     [leftEye updateFrameWidth:1920 height:1080];
     [rightEye updateFrameWidth:1920 height:1080];
     
-    float pitch;
-    float roll;
-    [motionManager updateAttitudeAndGetPitch:&pitch andRoll:&roll];
-    [leftEye updatePitch:pitch andRoll:roll forMotionManager:motionManager];
-    [rightEye updatePitch:pitch andRoll:roll forMotionManager:motionManager];
+    float pitchScaleFactor;
+    float rollScaleFactor;
+    
+    [motionManager processMotionUpdatesAndReturnPitchScaleFactor:&pitchScaleFactor
+                                              andRollScaleFactor:&rollScaleFactor];
+    
+    [leftEye updateScaleFactorForPitch:pitchScaleFactor andRoll:rollScaleFactor];
+    [rightEye updateScaleFactorForPitch:pitchScaleFactor andRoll:rollScaleFactor];
     
     [leftEye enqueueSampleBuffer:sampleBuffer];
     [rightEye enqueueSampleBuffer:sampleBuffer];
