@@ -94,10 +94,6 @@
         dispatch_suspend(notConnectedQueue_);
         notConnectedQueueSuspended_ = YES;
     }
-    
-    if (!connectedChannel_ && connectingToDeviceID_) {
-        [self enqueueConnectToUSBDevice];
-    }
 }
 
 - (BOOL)ioFrameChannel:(PTChannel*)channel shouldAcceptFrameOfType:(uint32_t)type tag:(uint32_t)tag payloadSize:(uint32_t)payloadSize {
@@ -115,7 +111,7 @@
     if (type == PTDeviceInfo) {
         NSDictionary *deviceInfo = [NSData dictionaryWithContentsOfData:payload];
         NSString *deviceName = [deviceInfo valueForKey:@"name"];
-        NSLog(@"Connected to %@", deviceName);
+        NSLog(@"Connected to device \"%@\"", deviceName);
         [_startButton setEnabled:true];
         _infoLabel.stringValue = [NSString stringWithFormat:@"Connected to %@", deviceName];
         [_startButton setTitle:@"Start LaptopVR"];
@@ -124,18 +120,8 @@
 }
 
 - (void)ioFrameChannel:(PTChannel*)channel didEndWithError:(NSError*)error {
-    // Channel disconnected, update UI accordingly
     if (connectedDeviceID_ && [connectedDeviceID_ isEqualToNumber:channel.userInfo]) {
         [self didDisconnectFromDevice:connectedDeviceID_];
-    }
-    
-    if (connectedChannel_ == channel) {
-        NSLog(@"Disconnected from %@", channel.userInfo);
-        if (isCurrentlyStreaming) {
-            [self stopStream];
-        }
-        [_startButton setEnabled:false];
-        _infoLabel.stringValue = @"Waiting for device to connect...";
     }
 }
 
@@ -161,23 +147,32 @@
     [nc addObserverForName:PTUSBDeviceDidDetachNotification object:PTUSBHub.sharedHub queue:nil usingBlock:^(NSNotification *note) {
         NSNumber *deviceID = [note.userInfo objectForKey:PTUSBHubNotificationKeyDeviceID];
         NSLog(@"PTUSBDeviceDidDetachNotification: %@", deviceID);
-        
-        if ([self->connectingToDeviceID_ isEqualToNumber:deviceID]) {
-            self->connectedDeviceProperties_ = nil;
-            self->connectingToDeviceID_ = nil;
-            if (self->connectedChannel_) {
-                [self->connectedChannel_ close];
-            }
-        }
+        [self didDisconnectFromDevice:deviceID];
     }];
 }
 
 - (void)didDisconnectFromDevice:(NSNumber*)deviceID {
     NSLog(@"Disconnected from device");
     if ([connectedDeviceID_ isEqualToNumber:deviceID]) {
+        // Disconnect from current channel, which will resume notConnectedQueue_
+        [self disconnectFromCurrentChannel];
+        
+        // Set connected device properties
         [self willChangeValueForKey:@"connectedDeviceID"];
         connectedDeviceID_ = nil;
         [self didChangeValueForKey:@"connectedDeviceID"];
+        
+        self->connectedDeviceProperties_ = nil;
+        self->connectingToDeviceID_ = nil;
+        
+        // Stop stream so frames aren't sent
+        if (isCurrentlyStreaming) {
+            [self stopStream];
+        }
+        
+        // Update UI
+        [_startButton setEnabled:false];
+        _infoLabel.stringValue = @"Waiting for device to connect...";
     }
 }
 
