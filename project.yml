@@ -1,0 +1,94 @@
+name: LaptopVR
+
+options:
+  bundleIdPrefix: com.jmistri
+  deploymentTarget:
+    macOS: "26.0"
+    iOS: "26.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: L7ZWHMSG85
+    MARKETING_VERSION: 2.0.0
+    CURRENT_PROJECT_VERSION: 1
+    CODE_SIGN_STYLE: Automatic
+    ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+packages:
+  LaptopVRKit:
+    path: Packages/LaptopVRKit
+
+targets:
+  LaptopVR-Mac:
+    type: application
+    platform: macOS
+    sources:
+      - Apps/Mac
+      - Shared/Assets
+    dependencies:
+      - package: LaptopVRKit
+        product: LaptopVRKit
+      - package: LaptopVRKit
+        product: CGVirtualDisplayPrivate
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jmistri.laptopvr.mac
+        PRODUCT_NAME: LaptopVR
+        ENABLE_HARDENED_RUNTIME: YES
+    info:
+      path: Apps/Mac/Info.plist
+      properties:
+        CFBundleDisplayName: LaptopVR
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: $(MACOSX_DEPLOYMENT_TARGET)
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: Copyright © 2021-2026 Jamsheed Mistri. All rights reserved.
+        NSLocalNetworkUsageDescription: LaptopVR looks for your iPhone on the local network to stream your screen to it over Wi-Fi.
+        NSBonjourServices:
+          - _laptopvr._tcp
+    scheme: {}
+
+  LaptopVR-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - Apps/iOS
+      - Shared/Assets
+    dependencies:
+      - package: LaptopVRKit
+        product: LaptopVRKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.jmistri.laptopvr
+        PRODUCT_NAME: LaptopVR
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: Apps/iOS/Info.plist
+      properties:
+        CFBundleDisplayName: LaptopVR
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # A SwiftUI app needs the scene manifest to get a window.
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UILaunchScreen: {}
+        UIStatusBarHidden: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIRequiredDeviceCapabilities:
+          - arm64
+          - metal
+        # Allows 120 Hz rendering on ProMotion iPhones.
+        CADisableMinimumFrameDurationOnPhone: true
+        ITSAppUsesNonExemptEncryption: false
+        NSCameraUsageDescription: LaptopVR uses the camera to show your surroundings in passthrough mode and to scan your viewer's QR code.
+        NSLocalNetworkUsageDescription: LaptopVR receives your Mac's screen over the local network when no cable is connected.
+        NSBonjourServices:
+          - _laptopvr._tcp
+    scheme: {}

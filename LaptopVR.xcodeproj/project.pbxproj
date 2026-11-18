@@ -1,0 +1,770 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		01D74F1FF80CDCD5B74E415D /* HUDPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AFDA965A01C5F1279C8AB38 /* HUDPanel.swift */; };
+		04A7B340ACF0B4E20E9B0F3F /* DisplayMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5415BA079E86967627746AEE /* DisplayMetrics.swift */; };
+		094F70EBD103633CFE8053F4 /* LaptopVRApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18729765B9ACF514E1C6D8C1 /* LaptopVRApp.swift */; };
+		0B96A9741250528729B292E6 /* CardboardCode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F735DF8F19C0E15176C6F7C0 /* CardboardCode.swift */; };
+		157C70D281A86CD6220988C7 /* ImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5960E36CC0AD91CF3A681A6 /* ImageStore.swift */; };
+		18A1B1465D7B5CCE8CA903C2 /* Brand.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 37C59566AB1E546A9405DC99 /* Brand.xcassets */; };
+		1E6CA7622777A0508F9D72F6 /* Shortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = B08375922C51EE715DC22C86 /* Shortcut.swift */; };
+		1F5E9860FA1268DA0A25C652 /* HeadTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529C80B15F24441595F757B2 /* HeadTracker.swift */; };
+		208458E37EC36E627F985C88 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD64E771E1DC88A6D7842B52 /* AppModel.swift */; };
+		2187FE57B79FD85DBCF5009B /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF9A1AE05593EB7767D704EE /* AppModel.swift */; };
+		265E9705B7F953AB11522712 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B21CF5B88B3DEC5CE9D46A4 /* WelcomeView.swift */; };
+		27D3E7316081B5C1164FA568 /* HostEndpoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE82EC471B58A3F4D55DF52C /* HostEndpoint.swift */; };
+		28D75B55BD74DE6BBE609A48 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14B373FB5A1900B806036119 /* HomeView.swift */; };
+		2F6275D43D4149476814B6C7 /* DisplayStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = E209E77B4B71C9368FE0E5E1 /* DisplayStream.swift */; };
+		304D38516F1F78D10039258E /* PrivacyScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4899AFA1A936804E439F82C1 /* PrivacyScreen.swift */; };
+		324718B0E6AA8B3CE11B6F35 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C7E7173CE74DBB1755408F7C /* Assets.xcassets */; };
+		3703DF4017B241E068B170C6 /* HotkeyCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCF5B9324A00BFB542D331CE /* HotkeyCenter.swift */; };
+		38ADC0E652578361F6E6C98D /* RenderMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE4765D43DC071A04A940EEB /* RenderMath.swift */; };
+		4307F1BB02F0D861A26FD280 /* StereoShader.msl in Resources */ = {isa = PBXBuildFile; fileRef = 1BD30B632761AD78A0EFAC45 /* StereoShader.msl */; };
+		4A0F8DB68AE0F1C00DDFBD97 /* FrameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB92F4723777B5ABAC3D865E /* FrameStore.swift */; };
+		4EEBBE47D16DCDE33D4219F2 /* CGVirtualDisplayPrivate in Frameworks */ = {isa = PBXBuildFile; productRef = F6FEF61A9BBBD0FC5E6B7A42 /* CGVirtualDisplayPrivate */; };
+		5A45A8EF9311FD928F026D5F /* SessionResolutionSwitcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15187D213AA87737F2824A47 /* SessionResolutionSwitcher.swift */; };
+		5BB4495B4B14551BADDFE983 /* HeadsetScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5778BC80C887D0473EA060F1 /* HeadsetScreen.swift */; };
+		7083CEF1A774005FB03CEEDF /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 573C1D52146CA29C0E6DDA05 /* AppSettings.swift */; };
+		73657F36A1A6E43B06B3561A /* DockIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A5D90E9E446570ABF5A9C13 /* DockIcon.swift */; };
+		79FBF43E3D8E3DFEF44B4D6E /* ArrangementEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86C54A480D6B093C86D1664E /* ArrangementEditor.swift */; };
+		7D2FE456B7D5C0D7A86B575A /* Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D59671E9CD1EA8A3330529A /* Support.swift */; };
+		7E26C0B74F9AEE3663124FB5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7EE4269B98790C7FAE5E3890 /* Assets.xcassets */; };
+		832F737548316C28196120DB /* ViewerProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB825B31505BE9312FBE45FC /* ViewerProfile.swift */; };
+		87228BC145EB4731D01DBCFC /* StreamSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93452AF73116469CDAA66D01 /* StreamSession.swift */; };
+		87D27A207143B3348D02A1E1 /* MenuPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45B351E76D8CAD67160681A0 /* MenuPopover.swift */; };
+		889C1E69780E41CF079ADC60 /* StereoRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCD7511B9E55BEC7C9073725 /* StereoRenderer.swift */; };
+		9B962169A7A96E729DB15D99 /* Brand.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 37C59566AB1E546A9405DC99 /* Brand.xcassets */; };
+		AA1AD95351EC5E9334533650 /* HostConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4698FC98A314505C48ED731 /* HostConnection.swift */; };
+		AEE4033083A749410E8A21D0 /* ViewerSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FDC1AD7EB3BEBE1038F0645 /* ViewerSetupView.swift */; };
+		B790DAEB6B028AFC1613EE41 /* QRScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80082769F012716B8427DBA /* QRScanner.swift */; };
+		BAF4ED9A954AB58215D2918F /* LaptopVRApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25A86E7BE54655A904BDE10A /* LaptopVRApp.swift */; };
+		BC1856245DFE2B5CA9D12765 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 89F49EEF919D439DB0B9D16A /* AppIcon.icon */; };
+		BFD0A0CF809E8C204731BDDE /* DisplayCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31ED8E6E8DD2D12AA217838A /* DisplayCatalog.swift */; };
+		C04D423B178E6ADB478E7824 /* Backlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63430EE9A3D943FEC650A2E3 /* Backlight.swift */; };
+		C2691FD6C795175C29E7382D /* ShortcutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CAF1D0CF053416D24D93FE9 /* ShortcutRecorder.swift */; };
+		C67556C877B6ACE47977702F /* Passthrough.swift in Sources */ = {isa = PBXBuildFile; fileRef = 454146393CB65BE54EA92785 /* Passthrough.swift */; };
+		CE906E54A6E4662FC1B6AF48 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64C85CBB8E1E1D0793744B5B /* SettingsView.swift */; };
+		D9DD0BD22E5FE510D3BBC104 /* LaptopVRKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8E3FC30CBDDBB60889A41510 /* LaptopVRKit */; };
+		DB2B2B236CC5BF9A2F7238ED /* SceneBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D6B8A49B7A633CD8292E596 /* SceneBuilder.swift */; };
+		F53FA4FC6D0B32141F8529F2 /* LaptopVRKit in Frameworks */ = {isa = PBXBuildFile; productRef = DAD71C728917C78703C6E7F5 /* LaptopVRKit */; };
+		FE7F63EB0D8BD2A8A40F005F /* VirtualDisplayManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1C77E1B75A66B829165DAE3 /* VirtualDisplayManager.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		14B373FB5A1900B806036119 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		15187D213AA87737F2824A47 /* SessionResolutionSwitcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionResolutionSwitcher.swift; sourceTree = "<group>"; };
+		18729765B9ACF514E1C6D8C1 /* LaptopVRApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaptopVRApp.swift; sourceTree = "<group>"; };
+		1BD30B632761AD78A0EFAC45 /* StereoShader.msl */ = {isa = PBXFileReference; path = StereoShader.msl; sourceTree = "<group>"; };
+		1CAF1D0CF053416D24D93FE9 /* ShortcutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorder.swift; sourceTree = "<group>"; };
+		25A86E7BE54655A904BDE10A /* LaptopVRApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaptopVRApp.swift; sourceTree = "<group>"; };
+		31ED8E6E8DD2D12AA217838A /* DisplayCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayCatalog.swift; sourceTree = "<group>"; };
+		37C59566AB1E546A9405DC99 /* Brand.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Brand.xcassets; sourceTree = "<group>"; };
+		454146393CB65BE54EA92785 /* Passthrough.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Passthrough.swift; sourceTree = "<group>"; };
+		45B351E76D8CAD67160681A0 /* MenuPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuPopover.swift; sourceTree = "<group>"; };
+		4899AFA1A936804E439F82C1 /* PrivacyScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyScreen.swift; sourceTree = "<group>"; };
+		4D6B8A49B7A633CD8292E596 /* SceneBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneBuilder.swift; sourceTree = "<group>"; };
+		4E492C139938E804429764E8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		529C80B15F24441595F757B2 /* HeadTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadTracker.swift; sourceTree = "<group>"; };
+		5415BA079E86967627746AEE /* DisplayMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayMetrics.swift; sourceTree = "<group>"; };
+		573C1D52146CA29C0E6DDA05 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		5778BC80C887D0473EA060F1 /* HeadsetScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadsetScreen.swift; sourceTree = "<group>"; };
+		5D59671E9CD1EA8A3330529A /* Support.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support.swift; sourceTree = "<group>"; };
+		5FDC1AD7EB3BEBE1038F0645 /* ViewerSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerSetupView.swift; sourceTree = "<group>"; };
+		63430EE9A3D943FEC650A2E3 /* Backlight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backlight.swift; sourceTree = "<group>"; };
+		64C85CBB8E1E1D0793744B5B /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		6A5D90E9E446570ABF5A9C13 /* DockIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DockIcon.swift; sourceTree = "<group>"; };
+		7B21CF5B88B3DEC5CE9D46A4 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		7EE4269B98790C7FAE5E3890 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		7FCAB9815F578B0BC5C8766C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		86C54A480D6B093C86D1664E /* ArrangementEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrangementEditor.swift; sourceTree = "<group>"; };
+		89F49EEF919D439DB0B9D16A /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		8AFDA965A01C5F1279C8AB38 /* HUDPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HUDPanel.swift; sourceTree = "<group>"; };
+		93452AF73116469CDAA66D01 /* StreamSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamSession.swift; sourceTree = "<group>"; };
+		93EA80383DE4AB4C20A79194 /* LaptopVRKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LaptopVRKit; path = Packages/LaptopVRKit; sourceTree = SOURCE_ROOT; };
+		A9BD288E3141AAB81AE90EB8 /* LaptopVR-Mac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "LaptopVR-Mac.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AF9A1AE05593EB7767D704EE /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		B01A0C6136810F719EF28007 /* LaptopVR-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "LaptopVR-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B08375922C51EE715DC22C86 /* Shortcut.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shortcut.swift; sourceTree = "<group>"; };
+		BB825B31505BE9312FBE45FC /* ViewerProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerProfile.swift; sourceTree = "<group>"; };
+		BB92F4723777B5ABAC3D865E /* FrameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameStore.swift; sourceTree = "<group>"; };
+		BCD7511B9E55BEC7C9073725 /* StereoRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StereoRenderer.swift; sourceTree = "<group>"; };
+		BCF5B9324A00BFB542D331CE /* HotkeyCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyCenter.swift; sourceTree = "<group>"; };
+		BD64E771E1DC88A6D7842B52 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		C1C77E1B75A66B829165DAE3 /* VirtualDisplayManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualDisplayManager.swift; sourceTree = "<group>"; };
+		C7E7173CE74DBB1755408F7C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D4698FC98A314505C48ED731 /* HostConnection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostConnection.swift; sourceTree = "<group>"; };
+		DE4765D43DC071A04A940EEB /* RenderMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RenderMath.swift; sourceTree = "<group>"; };
+		DE82EC471B58A3F4D55DF52C /* HostEndpoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostEndpoint.swift; sourceTree = "<group>"; };
+		E209E77B4B71C9368FE0E5E1 /* DisplayStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayStream.swift; sourceTree = "<group>"; };
+		F5960E36CC0AD91CF3A681A6 /* ImageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageStore.swift; sourceTree = "<group>"; };
+		F735DF8F19C0E15176C6F7C0 /* CardboardCode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardboardCode.swift; sourceTree = "<group>"; };
+		F80082769F012716B8427DBA /* QRScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScanner.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		9B0F33D75961E1DADAAE268E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D9DD0BD22E5FE510D3BBC104 /* LaptopVRKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B89F38A342F55BCD6527744A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F53FA4FC6D0B32141F8529F2 /* LaptopVRKit in Frameworks */,
+				4EEBBE47D16DCDE33D4219F2 /* CGVirtualDisplayPrivate in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		04FBA8640632FC337E083DF6 /* Displays */ = {
+			isa = PBXGroup;
+			children = (
+				31ED8E6E8DD2D12AA217838A /* DisplayCatalog.swift */,
+				15187D213AA87737F2824A47 /* SessionResolutionSwitcher.swift */,
+				C1C77E1B75A66B829165DAE3 /* VirtualDisplayManager.swift */,
+			);
+			path = Displays;
+			sourceTree = "<group>";
+		};
+		072455629C2EED97F9EA0ACD /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				C7E7173CE74DBB1755408F7C /* Assets.xcassets */,
+				4E492C139938E804429764E8 /* Info.plist */,
+				B0A139DBA391D3EC9EF89B7A /* App */,
+				BAFF0D7969F317576BC9FE3B /* Connection */,
+				A4E8E980F497FB9079966431 /* Render */,
+				D3B270F46309A8FCAE5E2F70 /* Tracking */,
+				72A1CAED9399C6ED7CE1B6A9 /* UI */,
+				44C6FA48E5E59C74FF14005B /* Viewer */,
+			);
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		0A2A2786F1553C4924831679 /* Connection */ = {
+			isa = PBXGroup;
+			children = (
+				DE82EC471B58A3F4D55DF52C /* HostEndpoint.swift */,
+			);
+			path = Connection;
+			sourceTree = "<group>";
+		};
+		0F1E1DFB5BF1CA21BA18FF97 /* Hotkeys */ = {
+			isa = PBXGroup;
+			children = (
+				BCF5B9324A00BFB542D331CE /* HotkeyCenter.swift */,
+				B08375922C51EE715DC22C86 /* Shortcut.swift */,
+			);
+			path = Hotkeys;
+			sourceTree = "<group>";
+		};
+		2BBF03A849EB93855101BA6E /* Apps */ = {
+			isa = PBXGroup;
+			children = (
+				072455629C2EED97F9EA0ACD /* iOS */,
+				2F6FE698BD175E08F508BDD5 /* Mac */,
+			);
+			path = Apps;
+			sourceTree = "<group>";
+		};
+		2F6FE698BD175E08F508BDD5 /* Mac */ = {
+			isa = PBXGroup;
+			children = (
+				89F49EEF919D439DB0B9D16A /* AppIcon.icon */,
+				7EE4269B98790C7FAE5E3890 /* Assets.xcassets */,
+				7FCAB9815F578B0BC5C8766C /* Info.plist */,
+				A521EF40D88715C429398666 /* App */,
+				C85FE864B8968FE7A17A4304 /* Capture */,
+				0A2A2786F1553C4924831679 /* Connection */,
+				04FBA8640632FC337E083DF6 /* Displays */,
+				0F1E1DFB5BF1CA21BA18FF97 /* Hotkeys */,
+				9E10757E256BFB01001256FE /* Privacy */,
+				9BF441AF60B6A5A639D0A3A0 /* Session */,
+				42CFA3F5E7064C0BDF6CCFBD /* UI */,
+			);
+			path = Mac;
+			sourceTree = "<group>";
+		};
+		42CFA3F5E7064C0BDF6CCFBD /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				86C54A480D6B093C86D1664E /* ArrangementEditor.swift */,
+				45B351E76D8CAD67160681A0 /* MenuPopover.swift */,
+				64C85CBB8E1E1D0793744B5B /* SettingsView.swift */,
+				1CAF1D0CF053416D24D93FE9 /* ShortcutRecorder.swift */,
+				5D59671E9CD1EA8A3330529A /* Support.swift */,
+				7B21CF5B88B3DEC5CE9D46A4 /* WelcomeView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		44C6FA48E5E59C74FF14005B /* Viewer */ = {
+			isa = PBXGroup;
+			children = (
+				F735DF8F19C0E15176C6F7C0 /* CardboardCode.swift */,
+				5415BA079E86967627746AEE /* DisplayMetrics.swift */,
+				BB825B31505BE9312FBE45FC /* ViewerProfile.swift */,
+			);
+			path = Viewer;
+			sourceTree = "<group>";
+		};
+		72A1CAED9399C6ED7CE1B6A9 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				5778BC80C887D0473EA060F1 /* HeadsetScreen.swift */,
+				14B373FB5A1900B806036119 /* HomeView.swift */,
+				F80082769F012716B8427DBA /* QRScanner.swift */,
+				5FDC1AD7EB3BEBE1038F0645 /* ViewerSetupView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		9BF441AF60B6A5A639D0A3A0 /* Session */ = {
+			isa = PBXGroup;
+			children = (
+				AF9A1AE05593EB7767D704EE /* AppModel.swift */,
+				573C1D52146CA29C0E6DDA05 /* AppSettings.swift */,
+				F5960E36CC0AD91CF3A681A6 /* ImageStore.swift */,
+				4D6B8A49B7A633CD8292E596 /* SceneBuilder.swift */,
+			);
+			path = Session;
+			sourceTree = "<group>";
+		};
+		9E10757E256BFB01001256FE /* Privacy */ = {
+			isa = PBXGroup;
+			children = (
+				63430EE9A3D943FEC650A2E3 /* Backlight.swift */,
+				4899AFA1A936804E439F82C1 /* PrivacyScreen.swift */,
+			);
+			path = Privacy;
+			sourceTree = "<group>";
+		};
+		A0EA119F31A6BB212F79263B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B01A0C6136810F719EF28007 /* LaptopVR-iOS.app */,
+				A9BD288E3141AAB81AE90EB8 /* LaptopVR-Mac.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A4E8E980F497FB9079966431 /* Render */ = {
+			isa = PBXGroup;
+			children = (
+				8AFDA965A01C5F1279C8AB38 /* HUDPanel.swift */,
+				DE4765D43DC071A04A940EEB /* RenderMath.swift */,
+				BCD7511B9E55BEC7C9073725 /* StereoRenderer.swift */,
+				1BD30B632761AD78A0EFAC45 /* StereoShader.msl */,
+			);
+			path = Render;
+			sourceTree = "<group>";
+		};
+		A521EF40D88715C429398666 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				6A5D90E9E446570ABF5A9C13 /* DockIcon.swift */,
+				25A86E7BE54655A904BDE10A /* LaptopVRApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		B0A139DBA391D3EC9EF89B7A /* App */ = {
+			isa = PBXGroup;
+			children = (
+				BD64E771E1DC88A6D7842B52 /* AppModel.swift */,
+				18729765B9ACF514E1C6D8C1 /* LaptopVRApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		B3A8A61727A3693CE611FAA3 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				93EA80383DE4AB4C20A79194 /* LaptopVRKit */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		BAFF0D7969F317576BC9FE3B /* Connection */ = {
+			isa = PBXGroup;
+			children = (
+				BB92F4723777B5ABAC3D865E /* FrameStore.swift */,
+				D4698FC98A314505C48ED731 /* HostConnection.swift */,
+			);
+			path = Connection;
+			sourceTree = "<group>";
+		};
+		C85FE864B8968FE7A17A4304 /* Capture */ = {
+			isa = PBXGroup;
+			children = (
+				E209E77B4B71C9368FE0E5E1 /* DisplayStream.swift */,
+				93452AF73116469CDAA66D01 /* StreamSession.swift */,
+			);
+			path = Capture;
+			sourceTree = "<group>";
+		};
+		D3B270F46309A8FCAE5E2F70 /* Tracking */ = {
+			isa = PBXGroup;
+			children = (
+				529C80B15F24441595F757B2 /* HeadTracker.swift */,
+				454146393CB65BE54EA92785 /* Passthrough.swift */,
+			);
+			path = Tracking;
+			sourceTree = "<group>";
+		};
+		DC3A13A542D170D30E792C4D = {
+			isa = PBXGroup;
+			children = (
+				2BBF03A849EB93855101BA6E /* Apps */,
+				B3A8A61727A3693CE611FAA3 /* Packages */,
+				E247509D32F2ADFC2C116C46 /* Shared */,
+				A0EA119F31A6BB212F79263B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E247509D32F2ADFC2C116C46 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				F93F389B2F676EB3400F405E /* Assets */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		F93F389B2F676EB3400F405E /* Assets */ = {
+			isa = PBXGroup;
+			children = (
+				37C59566AB1E546A9405DC99 /* Brand.xcassets */,
+			);
+			path = Assets;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D391A017FC1918A9D91975B0 /* LaptopVR-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D0F370F934B8BAB37E4A3C6D /* Build configuration list for PBXNativeTarget "LaptopVR-iOS" */;
+			buildPhases = (
+				E8D17849D71BA776D084B3E8 /* Sources */,
+				BC5F89D1D1AD10F89B9F189F /* Resources */,
+				9B0F33D75961E1DADAAE268E /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "LaptopVR-iOS";
+			packageProductDependencies = (
+				8E3FC30CBDDBB60889A41510 /* LaptopVRKit */,
+			);
+			productName = "LaptopVR-iOS";
+			productReference = B01A0C6136810F719EF28007 /* LaptopVR-iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		FFA528B7219F6D1D07CD270E /* LaptopVR-Mac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 56582B9C1C457AACC82F9A72 /* Build configuration list for PBXNativeTarget "LaptopVR-Mac" */;
+			buildPhases = (
+				613D24BA95151BE5CBF06027 /* Sources */,
+				8C87C8A35BD73B8F60AA3D55 /* Resources */,
+				B89F38A342F55BCD6527744A /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "LaptopVR-Mac";
+			packageProductDependencies = (
+				DAD71C728917C78703C6E7F5 /* LaptopVRKit */,
+				F6FEF61A9BBBD0FC5E6B7A42 /* CGVirtualDisplayPrivate */,
+			);
+			productName = "LaptopVR-Mac";
+			productReference = A9BD288E3141AAB81AE90EB8 /* LaptopVR-Mac.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F5B562833037CEF74AA1A7D3 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					D391A017FC1918A9D91975B0 = {
+						DevelopmentTeam = L7ZWHMSG85;
+						ProvisioningStyle = Automatic;
+					};
+					FFA528B7219F6D1D07CD270E = {
+						DevelopmentTeam = L7ZWHMSG85;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 73CFE44BFE6CC66759B12FDE /* Build configuration list for PBXProject "LaptopVR" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = DC3A13A542D170D30E792C4D;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0E1E4E8A316314891C561009 /* XCLocalSwiftPackageReference "Packages/LaptopVRKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A0EA119F31A6BB212F79263B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FFA528B7219F6D1D07CD270E /* LaptopVR-Mac */,
+				D391A017FC1918A9D91975B0 /* LaptopVR-iOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8C87C8A35BD73B8F60AA3D55 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BC1856245DFE2B5CA9D12765 /* AppIcon.icon in Resources */,
+				7E26C0B74F9AEE3663124FB5 /* Assets.xcassets in Resources */,
+				18A1B1465D7B5CCE8CA903C2 /* Brand.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC5F89D1D1AD10F89B9F189F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				324718B0E6AA8B3CE11B6F35 /* Assets.xcassets in Resources */,
+				9B962169A7A96E729DB15D99 /* Brand.xcassets in Resources */,
+				4307F1BB02F0D861A26FD280 /* StereoShader.msl in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		613D24BA95151BE5CBF06027 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2187FE57B79FD85DBCF5009B /* AppModel.swift in Sources */,
+				7083CEF1A774005FB03CEEDF /* AppSettings.swift in Sources */,
+				79FBF43E3D8E3DFEF44B4D6E /* ArrangementEditor.swift in Sources */,
+				C04D423B178E6ADB478E7824 /* Backlight.swift in Sources */,
+				BFD0A0CF809E8C204731BDDE /* DisplayCatalog.swift in Sources */,
+				2F6275D43D4149476814B6C7 /* DisplayStream.swift in Sources */,
+				73657F36A1A6E43B06B3561A /* DockIcon.swift in Sources */,
+				27D3E7316081B5C1164FA568 /* HostEndpoint.swift in Sources */,
+				3703DF4017B241E068B170C6 /* HotkeyCenter.swift in Sources */,
+				157C70D281A86CD6220988C7 /* ImageStore.swift in Sources */,
+				BAF4ED9A954AB58215D2918F /* LaptopVRApp.swift in Sources */,
+				87D27A207143B3348D02A1E1 /* MenuPopover.swift in Sources */,
+				304D38516F1F78D10039258E /* PrivacyScreen.swift in Sources */,
+				DB2B2B236CC5BF9A2F7238ED /* SceneBuilder.swift in Sources */,
+				5A45A8EF9311FD928F026D5F /* SessionResolutionSwitcher.swift in Sources */,
+				CE906E54A6E4662FC1B6AF48 /* SettingsView.swift in Sources */,
+				1E6CA7622777A0508F9D72F6 /* Shortcut.swift in Sources */,
+				C2691FD6C795175C29E7382D /* ShortcutRecorder.swift in Sources */,
+				87228BC145EB4731D01DBCFC /* StreamSession.swift in Sources */,
+				7D2FE456B7D5C0D7A86B575A /* Support.swift in Sources */,
+				FE7F63EB0D8BD2A8A40F005F /* VirtualDisplayManager.swift in Sources */,
+				265E9705B7F953AB11522712 /* WelcomeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E8D17849D71BA776D084B3E8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				208458E37EC36E627F985C88 /* AppModel.swift in Sources */,
+				0B96A9741250528729B292E6 /* CardboardCode.swift in Sources */,
+				04A7B340ACF0B4E20E9B0F3F /* DisplayMetrics.swift in Sources */,
+				4A0F8DB68AE0F1C00DDFBD97 /* FrameStore.swift in Sources */,
+				01D74F1FF80CDCD5B74E415D /* HUDPanel.swift in Sources */,
+				1F5E9860FA1268DA0A25C652 /* HeadTracker.swift in Sources */,
+				5BB4495B4B14551BADDFE983 /* HeadsetScreen.swift in Sources */,
+				28D75B55BD74DE6BBE609A48 /* HomeView.swift in Sources */,
+				AA1AD95351EC5E9334533650 /* HostConnection.swift in Sources */,
+				094F70EBD103633CFE8053F4 /* LaptopVRApp.swift in Sources */,
+				C67556C877B6ACE47977702F /* Passthrough.swift in Sources */,
+				B790DAEB6B028AFC1613EE41 /* QRScanner.swift in Sources */,
+				38ADC0E652578361F6E6C98D /* RenderMath.swift in Sources */,
+				889C1E69780E41CF079ADC60 /* StereoRenderer.swift in Sources */,
+				832F737548316C28196120DB /* ViewerProfile.swift in Sources */,
+				AEE4033083A749410E8A21D0 /* ViewerSetupView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		14B016DF05014A2867EC5768 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Apps/iOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jmistri.laptopvr;
+				PRODUCT_NAME = LaptopVR;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		2A4D73A8DEB3A08F8241EDEC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Apps/Mac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jmistri.laptopvr.mac;
+				PRODUCT_NAME = LaptopVR;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		651183A7D8E4A1F989CCD79F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = L7ZWHMSG85;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 2.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		7D24FA4B942BCF70EBD5826D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Apps/iOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jmistri.laptopvr;
+				PRODUCT_NAME = LaptopVR;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		D26BE28343B15C4B632555C9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = Apps/Mac/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jmistri.laptopvr.mac;
+				PRODUCT_NAME = LaptopVR;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		DD1F530E822EEFFA36927623 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = L7ZWHMSG85;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 2.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		56582B9C1C457AACC82F9A72 /* Build configuration list for PBXNativeTarget "LaptopVR-Mac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2A4D73A8DEB3A08F8241EDEC /* Debug */,
+				D26BE28343B15C4B632555C9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		73CFE44BFE6CC66759B12FDE /* Build configuration list for PBXProject "LaptopVR" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DD1F530E822EEFFA36927623 /* Debug */,
+				651183A7D8E4A1F989CCD79F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D0F370F934B8BAB37E4A3C6D /* Build configuration list for PBXNativeTarget "LaptopVR-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7D24FA4B942BCF70EBD5826D /* Debug */,
+				14B016DF05014A2867EC5768 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		0E1E4E8A316314891C561009 /* XCLocalSwiftPackageReference "Packages/LaptopVRKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/LaptopVRKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8E3FC30CBDDBB60889A41510 /* LaptopVRKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LaptopVRKit;
+		};
+		DAD71C728917C78703C6E7F5 /* LaptopVRKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LaptopVRKit;
+		};
+		F6FEF61A9BBBD0FC5E6B7A42 /* CGVirtualDisplayPrivate */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CGVirtualDisplayPrivate;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = F5B562833037CEF74AA1A7D3 /* Project object */;
+}

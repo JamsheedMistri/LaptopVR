@@ -1,0 +1,232 @@
+// Stereo viewer shader. Compiled at run time by StereoRenderer.
+//
+// The whole picture is one full-screen triangle. For every pixel on the glass, the fragment
+// function works out which eye it belongs to, where the viewer's lens makes that pixel appear,
+// and follows that line of sight into the scene: screens first, surroundings behind them.
+// Doing this per pixel means the video is resampled exactly once, straight to the glass.
+
+#include <metal_stdlib>
+using namespace metal;
+
+constant int kMaxScreens = 6;
+
+// Mirrors `Uniforms` in StereoRenderer.swift.
+struct Uniforms {
+    float4x4 sceneFromEye;        // rotates a direction from eye space into the scene
+    float4x4 surroundingsFromEye; // ... into the surroundings, which stay level
+    float4x4 cameraFromEye;       // ... into the camera's axes when its frame was taken
+    float4 headPosition;          // xyz: midpoint between the eyes, in the scene (m)
+    float4 viewport;              // xy: size of the glass (px), z: pixels per metre, w: lens height above the bottom edge (m)
+    float4 lens;                  // x: lens separation (m), y: glass-to-lens distance (m), z: k1, w: k2
+    float4 optics;                // x: tangent of the widest visible angle, y: eye separation (m)
+    float4 layout;                // x: distance to the screens (m), y: width of the main screen (m), z: curvature, w: screen count
+    float4 focus;                 // xy: canvas point that sits straight ahead, z: corner radius (canvas units)
+    float4 surroundings;          // x: kind, y: brightness, zw: angle the image spans (rad)
+    float4 primaryColor;
+    float4 secondaryColor;
+    float4 camera;                // focal lengths and principal point as fractions of the image; x is 0 without a frame
+    float4 hud;                   // x: height of its centre, y: half width, z: half height (tangent units), w: opacity
+    float4 screenRect[kMaxScreens];  // centre xy and size zw, in canvas units
+    float4 screenImage[kMaxScreens]; // x: 1 once a frame has arrived, yz: its size (px)
+};
+
+struct VertexOut {
+    float4 position [[position]];
+};
+
+vertex VertexOut fullscreenVertex(uint vertexID [[vertex_id]]) {
+    float2 corner = float2((vertexID << 1) & 2, vertexID & 2);
+    VertexOut out;
+    out.position = float4(corner * 2.0 - 1.0, 0.0, 1.0);
+    return out;
+}
+
+// Video-range BT.709, as the Mac encodes it.
+static float3 videoColor(float y, float2 cbcr) {
+    y = (y - 16.0 / 255.0) * (255.0 / 219.0);
+    float2 c = (cbcr - 128.0 / 255.0) * (255.0 / 224.0);
+    return saturate(float3(y + 1.5748 * c.y, y - 0.1873 * c.x - 0.4681 * c.y, y + 1.8556 * c.x));
+}
+
+// Full-range BT.601, as the iPhone camera delivers it.
+static float3 cameraColor(float y, float2 cbcr) {
+    float2 c = cbcr - 0.5;
+    return saturate(float3(y + 1.402 * c.y, y - 0.3441 * c.x - 0.7141 * c.y, y + 1.772 * c.x));
+}
+
+// 0 at the edge of the unit square, rising to 1 a little way inside.
+static float edgeFade(float2 uv, float width) {
+    float2 inset = min(uv, 1.0 - uv);
+    return smoothstep(0.0, width, min(inset.x, inset.y));
+}
+
+fragment float4 stereoFragment(
+    VertexOut in [[stage_in]],
+    constant Uniforms &u [[buffer(0)]],
+    array<texture2d<float>, kMaxScreens> screenLuma [[texture(0)]],
+    array<texture2d<float>, kMaxScreens> screenChroma [[texture(6)]],
+    texture2d<float> cameraLuma [[texture(12)]],
+    texture2d<float> cameraChroma [[texture(13)]],
+    texture2d<float> surroundingsImage [[texture(14)]],
+    texture2d<float> hudImage [[texture(15)]],
+    sampler linearSampler [[sampler(0)]]
+) {
+    float2 glassSize = u.viewport.xy;
+    float pixelsPerMeter = u.viewport.z;
+    float2 pixel = in.position.xy;
+    float side = pixel.x < glassSize.x * 0.5 ? -1.0 : 1.0;
+
+    // Where this pixel is on the glass, in metres from the centre of this eye's lens.
+    float2 lensCenter = float2(glassSize.x * 0.5 / pixelsPerMeter + side * u.lens.x * 0.5, u.viewport.w);
+    float2 onGlass = float2(pixel.x, glassSize.y - pixel.y) / pixelsPerMeter - lensCenter;
+
+    // The lens magnifies more toward its rim. This is the direction the pixel appears in.
+    float2 r = onGlass / u.lens.y;
+    float r2 = dot(r, r);
+    float magnification = 1.0 + u.lens.z * r2 + u.lens.w * r2 * r2;
+    float2 tangent = r * magnification;
+
+    // Nothing is visible beyond the rim of the lens, or on the line between the eyes.
+    float visible = 1.0 - smoothstep(u.optics.x * 0.96, u.optics.x, length(tangent));
+    visible *= smoothstep(1.0, 2.5, abs(pixel.x - glassSize.x * 0.5));
+    if (visible <= 0.0) {
+        return float4(0.0, 0.0, 0.0, 1.0);
+    }
+
+    float3 eyeDirection = normalize(float3(tangent, -1.0));
+    float3 eyeOffset = float3(side * u.optics.y * 0.5, 0.0, 0.0);
+    float3 direction = (u.sceneFromEye * float4(eyeDirection, 0.0)).xyz;
+    float3 origin = u.headPosition.xyz + (u.sceneFromEye * float4(eyeOffset, 0.0)).xyz;
+
+    // ---- Surroundings ----
+
+    float3 color = float3(0.0);
+    int kind = int(u.surroundings.x);
+    float3 around = (u.surroundingsFromEye * float4(eyeDirection, 0.0)).xyz;
+    if (kind == 0) {
+        color = u.primaryColor.rgb;
+    } else if (kind == 1) {
+        color = mix(u.secondaryColor.rgb, u.primaryColor.rgb, smoothstep(-0.7, 0.7, around.y));
+    } else if (kind == 2) {
+        float azimuth = atan2(around.x, -around.z);
+        float elevation = asin(clamp(around.y, -1.0, 1.0));
+        float2 uv = float2(azimuth / u.surroundings.z + 0.5, 0.5 - elevation / u.surroundings.w);
+        if (all(uv >= 0.0) && all(uv <= 1.0)) {
+            // A full panorama has no edges to soften.
+            float fade = u.surroundings.z > 6.2 ? 1.0 : edgeFade(uv, 0.05);
+            color = surroundingsImage.sample(linearSampler, uv, level(0.0)).rgb * fade * u.surroundings.y;
+        }
+    } else if (u.camera.x > 0.0) {
+        // Passthrough: find this direction in the camera frame, allowing for how far the head
+        // has turned since the frame was taken.
+        float3 toward = (u.cameraFromEye * float4(eyeDirection, 0.0)).xyz;
+        if (toward.z < -0.05) {
+            float2 projected = toward.xy / -toward.z;
+            float2 uv = float2(u.camera.z + u.camera.x * projected.x, u.camera.w - u.camera.y * projected.y);
+            if (all(uv >= 0.0) && all(uv <= 1.0)) {
+                float y = cameraLuma.sample(linearSampler, uv, level(0.0)).r;
+                float2 cbcr = cameraChroma.sample(linearSampler, uv, level(0.0)).rg;
+                color = cameraColor(y, cbcr) * edgeFade(uv, 0.04) * u.surroundings.y;
+            }
+        }
+    }
+
+    // ---- Screens ----
+
+    float distance = u.layout.x;
+    float mainWidth = u.layout.y;
+    float curvature = u.layout.z;
+
+    // Where the line of sight meets the surface the screens lie on: x is the distance along the
+    // surface to the right of straight ahead, y the height.
+    float2 surface = float2(0.0);
+    bool hit = false;
+    if (curvature > 0.001) {
+        // A vertical cylinder that touches the point straight ahead. The viewer is inside it.
+        float radius = distance / curvature;
+        float2 axis = float2(0.0, radius - distance);
+        float2 o = origin.xz - axis;
+        float2 d = direction.xz;
+        float a = dot(d, d);
+        float b = dot(o, d);
+        float discriminant = b * b - a * (dot(o, o) - radius * radius);
+        if (a > 1e-8 && discriminant > 0.0) {
+            float t = (-b + sqrt(discriminant)) / a;
+            float3 point = origin + t * direction;
+            float2 fromAxis = point.xz - axis;
+            surface = float2(atan2(fromAxis.x, -fromAxis.y) * radius, point.y);
+            hit = t > 0.0;
+        }
+    } else if (direction.z < -1e-4) {
+        float t = (-distance - origin.z) / direction.z;
+        surface = (origin + t * direction).xy;
+        hit = t > 0.0;
+    }
+
+    if (hit) {
+        float2 canvas = surface / mainWidth + u.focus.xy;
+        // Size of one pixel of the glass on the canvas, for antialiasing.
+        float canvasPerPixel = magnification * distance / (pixelsPerMeter * u.lens.y * mainWidth);
+        float cornerRadius = u.focus.z;
+        int count = int(u.layout.w);
+
+        for (int i = 0; i < count; ++i) {
+            float4 rect = u.screenRect[i];
+            float2 fromCenter = canvas - rect.xy;
+
+            // Distance to the edge of a rounded rectangle; negative inside.
+            float2 q = abs(fromCenter) - rect.zw * 0.5 + cornerRadius;
+            float edge = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - cornerRadius;
+            float coverage = saturate(0.5 - edge / canvasPerPixel);
+            if (coverage <= 0.0) {
+                continue;
+            }
+
+            float3 screenColor = float3(0.05);
+            if (u.screenImage[i].x > 0.5) {
+                float2 uv = float2(fromCenter.x / rect.z + 0.5, 0.5 - fromCenter.y / rect.w);
+                float2 uvPerPixel = canvasPerPixel / rect.zw;
+                float2 texelsPerPixel = uvPerPixel * u.screenImage[i].yz;
+
+                if (max(texelsPerPixel.x, texelsPerPixel.y) > 1.15) {
+                    // The video has more detail than the glass can show here. Average four
+                    // samples across the pixel so fine text does not shimmer.
+                    const float2 offsets[4] = {
+                        float2(0.125, 0.375), float2(-0.375, 0.125),
+                        float2(0.375, -0.125), float2(-0.125, -0.375)
+                    };
+                    float y = 0.0;
+                    float2 cbcr = float2(0.0);
+                    for (int tap = 0; tap < 4; ++tap) {
+                        float2 at = uv + offsets[tap] * uvPerPixel;
+                        y += screenLuma[i].sample(linearSampler, at, level(0.0)).r;
+                        cbcr += screenChroma[i].sample(linearSampler, at, level(0.0)).rg;
+                    }
+                    screenColor = videoColor(y * 0.25, cbcr * 0.25);
+                } else {
+                    float y = screenLuma[i].sample(linearSampler, uv, level(0.0)).r;
+                    float2 cbcr = screenChroma[i].sample(linearSampler, uv, level(0.0)).rg;
+                    screenColor = videoColor(y, cbcr);
+                }
+            }
+            color = mix(color, screenColor, coverage);
+        }
+    }
+
+    // ---- Heads-up display ----
+
+    if (u.hud.w > 0.0) {
+        // A panel that moves with the head, at the depth of the screens so the eyes can stay
+        // converged where they already are.
+        float3 point = eyeOffset + eyeDirection * (distance / -eyeDirection.z);
+        float2 at = point.xy / distance;
+        float2 uv = float2(at.x / (2.0 * u.hud.y) + 0.5, 0.5 - (at.y - u.hud.x) / (2.0 * u.hud.z));
+        if (all(uv >= 0.0) && all(uv <= 1.0)) {
+            // The image has its alpha multiplied in.
+            float4 panel = hudImage.sample(linearSampler, uv, level(0.0)) * u.hud.w;
+            color = color * (1.0 - panel.a) + panel.rgb;
+        }
+    }
+
+    return float4(color * visible, 1.0);
+}
