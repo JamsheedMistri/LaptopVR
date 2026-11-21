@@ -47,6 +47,7 @@ final class AppModel {
     @ObservationIgnored private let tracker = HeadTracker()
     @ObservationIgnored private let passthrough: Passthrough
     @ObservationIgnored private let connection: HostConnection
+    @ObservationIgnored private let cameraSender: CameraSender
     @ObservationIgnored private var hostStats: HostStats?
     @ObservationIgnored private var warnedAboutHeat = false
 
@@ -70,13 +71,20 @@ final class AppModel {
             rendererError = error.localizedDescription
         }
 
-        connection = HostConnection(frames: frames, deviceName: UIDevice.current.name)
+        let connection = HostConnection(frames: frames, deviceName: UIDevice.current.name)
+        self.connection = connection
+        cameraSender = CameraSender { frame in connection.send(frame) }
     }
 
     /// Call once the app has a window: the screen's refresh rate is not known before that.
     func start() {
         UIDevice.current.isBatteryMonitoringEnabled = true
         renderer?.setProfile(profile)
+        // The Mac draws its recordings of the view from this.
+        renderer?.setViewHandler { [connection] pose in connection.send(pose.frame()) }
+        renderer?.setCameraHandler { [cameraSender] frame, surroundingsFromCamera in
+            cameraSender.submit(frame, surroundingsFromCamera: surroundingsFromCamera)
+        }
         updateMessage()
 
         let hello = ClientHello(
@@ -122,6 +130,7 @@ final class AppModel {
 
         case .connected(let host):
             link = .connected(host: host.hostName, transport: host.transport == "usb" ? "USB" : "Wi-Fi")
+            cameraSender.resetForNewLink()
             updateMessage()
             sendStatus()
 
@@ -149,6 +158,12 @@ final class AppModel {
 
         case .asset(let asset):
             renderer?.setSurroundingsImage(id: asset.id, data: asset.data)
+
+        case .cameraFrameDecoded:
+            cameraSender.acknowledge()
+
+        case .cameraKeyframeNeeded:
+            cameraSender.requestKeyframe()
         }
     }
 
@@ -183,13 +198,16 @@ final class AppModel {
         sendStatus()
     }
 
-    /// The camera runs only while it is being looked through.
+    /// The camera runs only while it is being looked through, and its picture goes to the Mac
+    /// only while the Mac is recording the view.
     private func updatePassthrough() {
-        if isInHeadset, scene.sessionActive, scene.environment.kind == .passthrough {
+        let isLookedThrough = isInHeadset && scene.sessionActive && scene.environment.kind == .passthrough
+        if isLookedThrough {
             passthrough.start()
         } else {
             passthrough.stop()
         }
+        cameraSender.setEnabled(isLookedThrough && scene.sharesCamera)
     }
 
     private func updateMessage() {

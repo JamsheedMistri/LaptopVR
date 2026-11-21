@@ -1,14 +1,10 @@
 import CoreVideo
 import Metal
-import MetalKit
 import QuartzCore
 import simd
 import VRProtocol
 
-enum RendererError: LocalizedError {
-    case metalUnavailable
-    case shader(String)
-
+extension RendererError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .metalUnavailable: "This iPhone cannot draw the headset view."
@@ -28,37 +24,6 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
         var presentMillis = 0.0
     }
 
-    /// Mirrors `Uniforms` in StereoShader.msl. Only 16-byte-aligned members, so the two layouts
-    /// agree without padding rules coming into it.
-    private struct Uniforms {
-        var sceneFromEye = matrix_identity_float4x4
-        var surroundingsFromEye = matrix_identity_float4x4
-        var cameraFromEye = matrix_identity_float4x4
-        var headPosition = SIMD4<Float>()
-        var viewport = SIMD4<Float>()
-        var lens = SIMD4<Float>()
-        var optics = SIMD4<Float>()
-        var layout = SIMD4<Float>()
-        var focus = SIMD4<Float>()
-        var surroundings = SIMD4<Float>()
-        var primaryColor = SIMD4<Float>()
-        var secondaryColor = SIMD4<Float>()
-        var camera = SIMD4<Float>()
-        var hud = SIMD4<Float>()
-        var screenRect = InlineArray<6, SIMD4<Float>>(repeating: SIMD4())
-        var screenImage = InlineArray<6, SIMD4<Float>>(repeating: SIMD4())
-    }
-
-    /// Texture slots, matching the shader's arguments.
-    private enum Slot {
-        static let screenLuma = 0
-        static let screenChroma = 6
-        static let cameraLuma = 12
-        static let cameraChroma = 13
-        static let surroundings = 14
-        static let hud = 15
-    }
-
     /// Everything other threads hand to the renderer.
     private struct Inputs {
         var scene = SceneState()
@@ -69,19 +34,9 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
         var message: HUDContent?
         var toast: (text: String, shownAt: CFTimeInterval)?
         var statsLines: [String] = []
-        var surroundingsImage: (id: String, texture: MTLTexture)?
-    }
-
-    /// A decoded frame's two planes as Metal textures.
-    private struct VideoImage {
-        let pixelBuffer: CVPixelBuffer
-        let luma: CVMetalTexture
-        let chroma: CVMetalTexture
-    }
-
-    /// Keeps textures alive until the GPU has finished the frame that uses them.
-    private final class Held: @unchecked Sendable {
-        var images: [VideoImage] = []
+        var surroundingsImage: SurroundingsImage?
+        var onView: (@Sendable (ViewPose) -> Void)?
+        var onCameraFrame: (@Sendable (Passthrough.Frame, SIMD4<Float>) -> Void)?
     }
 
     /// Where the screens are relative to the world, carried from frame to frame.
@@ -98,9 +53,13 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
         var trackedPosition: SIMD3<Float>?
         var wasSessionActive = false
         var lastPresentTime: CFTimeInterval = 0
+        var lastReportTime: CFTimeInterval = 0
     }
 
     private static let toastDuration: CFTimeInterval = 2.2
+    /// Least time between two reports of the view to the Mac: 60 a second, with room for a
+    /// refresh that arrives a little early.
+    private static let reportInterval: CFTimeInterval = 0.0155
     /// Eyes sit above and ahead of the neck they pivot on. Used when position is not tracked,
     /// so that turning the head still shifts the view slightly, as it does in life.
     private static let neck = SIMD3<Float>(0, 0.075, -0.08)
@@ -109,12 +68,8 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
     private let tracker: HeadTracker
     private let passthrough: Passthrough
 
-    private let device: MTLDevice
-    private let commandQueue: MTLCommandQueue
-    private let pipeline: MTLRenderPipelineState
-    private let sampler: MTLSamplerState
-    private let textureCache: CVMetalTextureCache
-    private let blankTexture: MTLTexture
+    private let resources: SceneResources
+    private let pipeline: any MTLRenderPipelineState
     private let hudPanel: HUDPanel
 
     private let lock = NSLock()
@@ -137,49 +92,10 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
         self.tracker = tracker
         self.passthrough = passthrough
 
-        guard let device = MTLCreateSystemDefaultDevice(),
-              let commandQueue = device.makeCommandQueue(),
-              let hudPanel = HUDPanel(device: device),
-              let blankTexture = device.makeTexture(descriptor: .texture2DDescriptor(
-                  pixelFormat: .rgba8Unorm, width: 1, height: 1, mipmapped: false))
-        else { throw RendererError.metalUnavailable }
-
-        var cache: CVMetalTextureCache?
-        CVMetalTextureCacheCreate(nil, nil, device, nil, &cache)
-        guard let cache else { throw RendererError.metalUnavailable }
-
-        // The shader ships as source and is compiled here, so building the app does not need
-        // Xcode's separate Metal toolchain.
-        guard let url = Bundle.main.url(forResource: "StereoShader", withExtension: "msl"),
-              let source = try? String(contentsOf: url, encoding: .utf8)
-        else { throw RendererError.shader("StereoShader.msl is missing from the app.") }
-
-        do {
-            let library = try device.makeLibrary(source: source, options: nil)
-            let descriptor = MTLRenderPipelineDescriptor()
-            descriptor.vertexFunction = library.makeFunction(name: "fullscreenVertex")
-            descriptor.fragmentFunction = library.makeFunction(name: "stereoFragment")
-            descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
-            pipeline = try device.makeRenderPipelineState(descriptor: descriptor)
-        } catch {
-            throw RendererError.shader(error.localizedDescription)
-        }
-
-        let samplerDescriptor = MTLSamplerDescriptor()
-        samplerDescriptor.minFilter = .linear
-        samplerDescriptor.magFilter = .linear
-        samplerDescriptor.sAddressMode = .clampToEdge
-        samplerDescriptor.tAddressMode = .clampToEdge
-        guard let sampler = device.makeSamplerState(descriptor: samplerDescriptor) else {
-            throw RendererError.metalUnavailable
-        }
-
-        self.device = device
-        self.commandQueue = commandQueue
+        resources = try SceneResources()
+        pipeline = try resources.makePipeline(fragment: "stereoFragment")
+        guard let hudPanel = HUDPanel(device: resources.device) else { throw RendererError.metalUnavailable }
         self.hudPanel = hudPanel
-        self.blankTexture = blankTexture
-        self.sampler = sampler
-        textureCache = cache
     }
 
     // MARK: - Inputs, from any thread
@@ -221,11 +137,22 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
     /// Decodes a picture for the surroundings. `id` is what the scene refers to it by.
     func setSurroundingsImage(id: String, data: Data) {
         DispatchQueue.global(qos: .utility).async { [self] in
-            let loader = MTKTextureLoader(device: device)
-            // Left as encoded, like the video: colours pass through to the glass untouched.
-            guard let texture = try? loader.newTexture(data: data, options: [.SRGB: false]) else { return }
-            lock.withLock { inputs.surroundingsImage = (id, texture) }
+            guard let image = resources.makeSurroundingsImage(id: id, data: data) else { return }
+            lock.withLock { inputs.surroundingsImage = image }
         }
+    }
+
+    /// Where the wearer is looking, reported many times a second while a session runs, on the
+    /// render thread.
+    func setViewHandler(_ handler: (@Sendable (ViewPose) -> Void)?) {
+        lock.withLock { inputs.onView = handler }
+    }
+
+    /// Every frame of the passthrough camera, once, as it is first drawn, on the render thread.
+    /// With it comes the quaternion that turns a direction in the camera's axes into the axes
+    /// of the surroundings, which is how `CameraPacket` describes where the camera pointed.
+    func setCameraHandler(_ handler: (@Sendable (Passthrough.Frame, SIMD4<Float>) -> Void)?) {
+        lock.withLock { inputs.onCameraFrame = handler }
     }
 
     var metrics: Metrics {
@@ -238,7 +165,7 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
     @MainActor
     func start(layer: CAMetalLayer) {
         stop()
-        layer.device = device
+        layer.device = resources.device
         layer.pixelFormat = .bgra8Unorm
         layer.framebufferOnly = true
         // The Mac sends sRGB; say so, and the system maps it to the iPhone's wider gamut.
@@ -339,12 +266,10 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
             .map { SIMD2(Float($0.centerX), Float($0.centerY)) } ?? SIMD2()
         view.focus = recentering ? focusTarget : view.focus + (focusTarget - view.focus) * (1 - exp(-step / 0.07))
 
-        let angle = Float(scene.screenAngleDegrees) * .pi / 180
-        let distance = Float(scene.distanceMeters)
-        let curvature = Float(scene.curvature)
-
         if scene.mode == .follow, !screens.isEmpty {
-            follow(forward: forward, screens: screens, angle: angle, curvature: curvature, profile: inputs.profile)
+            follow(
+                forward: forward, screens: screens, angle: Float(scene.screenAngleDegrees) * .pi / 180,
+                curvature: Float(scene.curvature), profile: inputs.profile)
             view.anchorPosition = position
         }
         view.headOffset = position - view.anchorPosition
@@ -355,36 +280,49 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
         let profile = inputs.profile
         let sceneFromWorld = view.anchor.rotation.transpose
 
-        var uniforms = Uniforms()
-        uniforms.sceneFromEye = simd_float4x4(rotation: sceneFromWorld * worldFromEye)
-        uniforms.surroundingsFromEye = simd_float4x4(
-            rotation: Bearing(azimuth: view.surroundingsAzimuth).rotation.transpose * worldFromEye)
-        uniforms.headPosition = SIMD4(sceneFromWorld * view.headOffset, 0)
+        let sceneFromEye = sceneFromWorld * worldFromEye
+        let surroundingsFromEye = Bearing(azimuth: view.surroundingsAzimuth).rotation.transpose * worldFromEye
+        let headInScene = sceneFromWorld * view.headOffset
+
+        if scene.sessionActive, let onView = inputs.onView, presentTime - view.lastReportTime >= Self.reportInterval {
+            view.lastReportTime = presentTime
+            onView(ViewPose(
+                sceneFromEye: simd_quatf(sceneFromEye).vector,
+                surroundingsFromEye: simd_quatf(surroundingsFromEye).vector,
+                headPosition: headInScene,
+                focus: view.focus))
+        }
+
+        var uniforms = SceneUniforms()
+        uniforms.sceneFromEye = simd_float4x4(rotation: sceneFromEye)
+        uniforms.surroundingsFromEye = simd_float4x4(rotation: surroundingsFromEye)
+        uniforms.headPosition = SIMD4(headInScene, 0)
         uniforms.viewport = SIMD4(
             glassWidth, glassHeight, inputs.pixelsPerMeter,
             profile.lensHeight(screenHeight: glassHeight / inputs.pixelsPerMeter))
         uniforms.lens = SIMD4(profile.lensSeparation, profile.screenToLens, profile.k1, profile.k2)
         uniforms.optics = SIMD4(tan(profile.fieldOfView * .pi / 180), profile.lensSeparation, 0, 0)
-        uniforms.layout = SIMD4(distance, distance * angle, curvature, Float(screens.count))
-        uniforms.focus = SIMD4(view.focus.x, view.focus.y, 0.012, 0)
+        uniforms.setLayout(scene, screenCount: screens.count, focus: view.focus)
 
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else { return }
+        guard let commandBuffer = resources.commandQueue.makeCommandBuffer() else { return }
         let pass = MTLRenderPassDescriptor()
         pass.colorAttachments[0].texture = update.drawable.texture
         pass.colorAttachments[0].loadAction = .dontCare
         pass.colorAttachments[0].storeAction = .store
         guard let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: pass) else { return }
         encoder.setRenderPipelineState(pipeline)
-        encoder.setFragmentSamplerState(sampler, index: 0)
+        encoder.setFragmentSamplerState(resources.sampler, index: 0)
 
-        let held = Held()
+        let held = HeldImages()
         bindScreens(screens, to: encoder, uniforms: &uniforms, held: held, presentTime: presentTime)
-        bindSurroundings(
-            scene.environment, image: inputs.surroundingsImage, cameraFrame: cameraFrame,
-            worldFromEye: worldFromEye, to: encoder, uniforms: &uniforms, held: held)
+        resources.bindSurroundings(
+            scene.environment, image: inputs.surroundingsImage, to: encoder, uniforms: &uniforms)
+        bindCamera(
+            cameraFrame, worldFromEye: worldFromEye, onFrame: inputs.onCameraFrame,
+            to: encoder, uniforms: &uniforms, held: held)
         bindHUD(inputs, hasScreens: !screens.isEmpty, now: now, to: encoder, uniforms: &uniforms)
 
-        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<Uniforms>.stride, index: 0)
+        encoder.setFragmentBytes(&uniforms, length: MemoryLayout<SceneUniforms>.stride, index: 0)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         encoder.endEncoding()
 
@@ -460,114 +398,49 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
     // MARK: - Textures
 
     private func bindScreens(
-        _ screens: [ScreenDescriptor], to encoder: any MTLRenderCommandEncoder, uniforms: inout Uniforms,
-        held: Held, presentTime: CFTimeInterval
+        _ screens: [ScreenDescriptor], to encoder: any MTLRenderCommandEncoder, uniforms: inout SceneUniforms,
+        held: HeldImages, presentTime: CFTimeInterval
     ) {
         let latest = frames.latest()
-        var current: [UInt16: VideoImage] = [:]
+        let fresh = resources.bindScreens(
+            screens, frames: latest.mapValues(\.pixelBuffer), images: &screenImages,
+            to: encoder, uniforms: &uniforms, held: held)
 
-        for index in 0..<LaptopVRProtocol.maxScreens {
-            var luma = blankTexture
-            var chroma = blankTexture
-
-            if index < screens.count {
-                let screen = screens[index]
-                uniforms.screenRect[index] = SIMD4(
-                    Float(screen.centerX), Float(screen.centerY), Float(screen.width), Float(screen.height))
-
-                if let frame = latest[screen.id] {
-                    var image = screenImages[screen.id]
-                    if image?.pixelBuffer !== frame.pixelBuffer {
-                        image = makeImage(frame.pixelBuffer)
-                        // First refresh showing this frame: note how long it waited.
-                        let waited = (presentTime - frame.decodedAt) * 1000
-                        presentMillis = presentMillis == 0 ? waited : presentMillis * 0.9 + waited * 0.1
-                    }
-                    if let image,
-                       let lumaTexture = CVMetalTextureGetTexture(image.luma),
-                       let chromaTexture = CVMetalTextureGetTexture(image.chroma) {
-                        luma = lumaTexture
-                        chroma = chromaTexture
-                        current[screen.id] = image
-                        held.images.append(image)
-                        uniforms.screenImage[index] = SIMD4(1, Float(lumaTexture.width), Float(lumaTexture.height), 0)
-                    }
-                }
-            }
-            encoder.setFragmentTexture(luma, index: Slot.screenLuma + index)
-            encoder.setFragmentTexture(chroma, index: Slot.screenChroma + index)
+        for screen in screens where fresh.contains(screen.id) {
+            // First refresh showing this frame: note how long it waited.
+            guard let frame = latest[screen.id] else { continue }
+            let waited = (presentTime - frame.decodedAt) * 1000
+            presentMillis = presentMillis == 0 ? waited : presentMillis * 0.9 + waited * 0.1
         }
-        screenImages = current
     }
 
-    private func bindSurroundings(
-        _ environment: EnvironmentSettings, image: (id: String, texture: MTLTexture)?, cameraFrame: Passthrough.Frame?,
-        worldFromEye: simd_float3x3, to encoder: any MTLRenderCommandEncoder, uniforms: inout Uniforms, held: Held
+    /// Passthrough: hands the camera's newest picture to the shader, and to `onFrame` the first
+    /// time it is drawn.
+    private func bindCamera(
+        _ cameraFrame: Passthrough.Frame?, worldFromEye: simd_float3x3,
+        onFrame: (@Sendable (Passthrough.Frame, SIMD4<Float>) -> Void)?,
+        to encoder: any MTLRenderCommandEncoder, uniforms: inout SceneUniforms, held: HeldImages
     ) {
-        func color(_ color: RGBColor) -> SIMD4<Float> {
-            SIMD4(Float(color.red), Float(color.green), Float(color.blue), 1)
-        }
-        uniforms.primaryColor = color(environment.primaryColor)
-        uniforms.secondaryColor = color(environment.secondaryColor)
-        let brightness = Float(1 - min(max(environment.dimming, 0), 1))
-
-        var imageTexture = blankTexture
-        var cameraLuma = blankTexture
-        var cameraChroma = blankTexture
-
-        switch environment.kind {
-        case .solid:
-            uniforms.surroundings = SIMD4(0, 1, 0, 0)
-        case .gradient:
-            uniforms.surroundings = SIMD4(1, 1, 0, 0)
-        case .image:
-            if let image, image.id == environment.imageAssetID {
-                imageTexture = image.texture
-                let aspect = Float(image.texture.width) / Float(image.texture.height)
-                // A 2:1 picture is taken to be a full panorama; anything else fills the view ahead.
-                var across: Float = aspect >= 1.9 ? 2 * .pi : 2.6
-                var upward = aspect >= 1.9 ? Float.pi : across / aspect
-                if upward > 2.4 {
-                    upward = 2.4
-                    across = upward * aspect
-                }
-                uniforms.surroundings = SIMD4(2, brightness, across, upward)
-            } else {
-                // Until the picture arrives.
-                uniforms.surroundings = SIMD4(0, 1, 0, 0)
-            }
-        case .passthrough:
-            uniforms.surroundings = SIMD4(3, brightness, 0, 0)
-            if let cameraFrame {
-                if cameraImage?.pixelBuffer !== cameraFrame.pixelBuffer {
-                    cameraImage = makeImage(cameraFrame.pixelBuffer)
-                }
-                if let cameraImage,
-                   let luma = CVMetalTextureGetTexture(cameraImage.luma),
-                   let chroma = CVMetalTextureGetTexture(cameraImage.chroma) {
-                    cameraLuma = luma
-                    cameraChroma = chroma
-                    held.images.append(cameraImage)
-                    uniforms.camera = cameraFrame.intrinsics
-                    // The camera's picture is drawn where the camera was pointing when it took
-                    // it, which keeps the room still even though the picture is a little old.
-                    uniforms.cameraFromEye = simd_float4x4(
-                        rotation: simd_float3x3(cameraFrame.worldFromCamera).transpose * worldFromEye)
-                }
-            }
-        }
-        if environment.kind != .passthrough {
+        guard let cameraFrame else {
             cameraImage = nil
+            return
         }
+        let isNew = cameraImage?.pixelBuffer !== cameraFrame.pixelBuffer
+        let worldFromCamera = simd_float3x3(cameraFrame.worldFromCamera)
+        resources.bindCamera(
+            cameraFrame.pixelBuffer, intrinsics: cameraFrame.intrinsics,
+            cameraFromEye: worldFromCamera.transpose * worldFromEye,
+            image: &cameraImage, to: encoder, uniforms: &uniforms, held: held)
 
-        encoder.setFragmentTexture(cameraLuma, index: Slot.cameraLuma)
-        encoder.setFragmentTexture(cameraChroma, index: Slot.cameraChroma)
-        encoder.setFragmentTexture(imageTexture, index: Slot.surroundings)
+        if isNew, let onFrame {
+            let surroundingsFromWorld = Bearing(azimuth: view.surroundingsAzimuth).rotation.transpose
+            onFrame(cameraFrame, simd_quatf(surroundingsFromWorld * worldFromCamera).vector)
+        }
     }
 
     private func bindHUD(
         _ inputs: Inputs, hasScreens: Bool, now: CFTimeInterval, to encoder: any MTLRenderCommandEncoder,
-        uniforms: inout Uniforms
+        uniforms: inout SceneUniforms
     ) {
         var content = HUDContent()
         var opacity: Float = 1
@@ -590,20 +463,7 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
             let aspect = Float(HUDPanel.height) / Float(HUDPanel.width)
             uniforms.hud = SIMD4(hasScreens ? -0.3 : 0, 0.44, 0.44 * aspect, opacity)
         }
-        encoder.setFragmentTexture(hudPanel.texture, index: Slot.hud)
-    }
-
-    private func makeImage(_ pixelBuffer: CVPixelBuffer) -> VideoImage? {
-        func plane(_ index: Int, _ format: MTLPixelFormat) -> CVMetalTexture? {
-            var texture: CVMetalTexture?
-            CVMetalTextureCacheCreateTextureFromImage(
-                nil, textureCache, pixelBuffer, nil, format,
-                CVPixelBufferGetWidthOfPlane(pixelBuffer, index), CVPixelBufferGetHeightOfPlane(pixelBuffer, index),
-                index, &texture)
-            return texture
-        }
-        guard let luma = plane(0, .r8Unorm), let chroma = plane(1, .rg8Unorm) else { return nil }
-        return VideoImage(pixelBuffer: pixelBuffer, luma: luma, chroma: chroma)
+        encoder.setFragmentTexture(hudPanel.texture, index: SceneTextureSlot.hud)
     }
 
     private func updateMetrics(now: CFTimeInterval) {

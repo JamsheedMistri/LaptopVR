@@ -1,30 +1,35 @@
-// Stereo viewer shader. Compiled at run time by StereoRenderer.
+// Scene shader, shared by the iPhone's headset view and the Mac's recording of it. Compiled at
+// run time by SceneResources.
 //
-// The whole picture is one full-screen triangle. For every pixel on the glass, the fragment
-// function works out which eye it belongs to, where the viewer's lens makes that pixel appear,
-// and follows that line of sight into the scene: screens first, surroundings behind them.
-// Doing this per pixel means the video is resampled exactly once, straight to the glass.
+// The whole picture is one full-screen triangle. For every pixel, a fragment function works out
+// the line of sight through that pixel and follows it into the scene: screens first,
+// surroundings behind them. Doing this per pixel means the video is resampled exactly once,
+// straight to the picture.
+//
+// There are two cameras. `stereoFragment` looks through the lenses of a viewer, one eye on each
+// half of the glass. `flatFragment` looks from between the eyes with no lenses at all.
 
 #include <metal_stdlib>
 using namespace metal;
 
 constant int kMaxScreens = 6;
 
-// Mirrors `Uniforms` in StereoRenderer.swift.
+// Mirrors `SceneUniforms` in SceneResources.swift.
 struct Uniforms {
     float4x4 sceneFromEye;        // rotates a direction from eye space into the scene
     float4x4 surroundingsFromEye; // ... into the surroundings, which stay level
     float4x4 cameraFromEye;       // ... into the camera's axes when its frame was taken
     float4 headPosition;          // xyz: midpoint between the eyes, in the scene (m)
-    float4 viewport;              // xy: size of the glass (px), z: pixels per metre, w: lens height above the bottom edge (m)
-    float4 lens;                  // x: lens separation (m), y: glass-to-lens distance (m), z: k1, w: k2
-    float4 optics;                // x: tangent of the widest visible angle, y: eye separation (m)
+    float4 viewport;              // xy: size of the picture (px); stereo only, z: pixels per metre, w: lens height above the bottom edge (m)
+    float4 lens;                  // stereo only. x: lens separation (m), y: glass-to-lens distance (m), z: k1, w: k2
+    float4 optics;                // x: tangent of the widest visible angle (stereo), or of half the width of the view (flat), y: eye separation (m)
     float4 layout;                // x: distance to the screens (m), y: width of the main screen (m), z: curvature, w: screen count
     float4 focus;                 // xy: canvas point that sits straight ahead, z: corner radius (canvas units)
     float4 surroundings;          // x: kind, y: brightness, zw: angle the image spans (rad)
     float4 primaryColor;
     float4 secondaryColor;
     float4 camera;                // focal lengths and principal point as fractions of the image; x is 0 without a frame
+    float4 cameraFormat;          // x: 1 if the frame is video range, as it is once it has been through a decoder
     float4 hud;                   // x: height of its centre, y: half width, z: half height (tangent units), w: opacity
     float4 screenRect[kMaxScreens];  // centre xy and size zw, in canvas units
     float4 screenImage[kMaxScreens]; // x: 1 once a frame has arrived, yz: its size (px)
@@ -48,9 +53,14 @@ static float3 videoColor(float y, float2 cbcr) {
     return saturate(float3(y + 1.5748 * c.y, y - 0.1873 * c.x - 0.4681 * c.y, y + 1.8556 * c.x));
 }
 
-// Full-range BT.601, as the iPhone camera delivers it.
-static float3 cameraColor(float y, float2 cbcr) {
+// BT.601, as the iPhone camera delivers it: full range straight from the camera, video range
+// after the Mac has decoded it.
+static float3 cameraColor(float y, float2 cbcr, bool videoRange) {
     float2 c = cbcr - 0.5;
+    if (videoRange) {
+        y = (y - 16.0 / 255.0) * (255.0 / 219.0);
+        c = (cbcr - 128.0 / 255.0) * (255.0 / 224.0);
+    }
     return saturate(float3(y + 1.402 * c.y, y - 0.3441 * c.x - 0.7141 * c.y, y + 1.772 * c.x));
 }
 
@@ -60,41 +70,21 @@ static float edgeFade(float2 uv, float width) {
     return smoothstep(0.0, width, min(inset.x, inset.y));
 }
 
-fragment float4 stereoFragment(
-    VertexOut in [[stage_in]],
-    constant Uniforms &u [[buffer(0)]],
-    array<texture2d<float>, kMaxScreens> screenLuma [[texture(0)]],
-    array<texture2d<float>, kMaxScreens> screenChroma [[texture(6)]],
-    texture2d<float> cameraLuma [[texture(12)]],
-    texture2d<float> cameraChroma [[texture(13)]],
-    texture2d<float> surroundingsImage [[texture(14)]],
-    texture2d<float> hudImage [[texture(15)]],
-    sampler linearSampler [[sampler(0)]]
+// What is seen along one line of sight. The line starts `eyeOffset` from the midpoint between
+// the eyes and runs along `eyeDirection`, both in the eye's axes. `tangentPerPixel` is how far
+// apart the lines of sight of neighbouring pixels are, which antialiasing needs.
+static float3 sceneColor(
+    constant Uniforms &u,
+    float3 eyeOffset,
+    float3 eyeDirection,
+    float tangentPerPixel,
+    array<texture2d<float>, kMaxScreens> screenLuma,
+    array<texture2d<float>, kMaxScreens> screenChroma,
+    texture2d<float> cameraLuma,
+    texture2d<float> cameraChroma,
+    texture2d<float> surroundingsImage,
+    sampler linearSampler
 ) {
-    float2 glassSize = u.viewport.xy;
-    float pixelsPerMeter = u.viewport.z;
-    float2 pixel = in.position.xy;
-    float side = pixel.x < glassSize.x * 0.5 ? -1.0 : 1.0;
-
-    // Where this pixel is on the glass, in metres from the centre of this eye's lens.
-    float2 lensCenter = float2(glassSize.x * 0.5 / pixelsPerMeter + side * u.lens.x * 0.5, u.viewport.w);
-    float2 onGlass = float2(pixel.x, glassSize.y - pixel.y) / pixelsPerMeter - lensCenter;
-
-    // The lens magnifies more toward its rim. This is the direction the pixel appears in.
-    float2 r = onGlass / u.lens.y;
-    float r2 = dot(r, r);
-    float magnification = 1.0 + u.lens.z * r2 + u.lens.w * r2 * r2;
-    float2 tangent = r * magnification;
-
-    // Nothing is visible beyond the rim of the lens, or on the line between the eyes.
-    float visible = 1.0 - smoothstep(u.optics.x * 0.96, u.optics.x, length(tangent));
-    visible *= smoothstep(1.0, 2.5, abs(pixel.x - glassSize.x * 0.5));
-    if (visible <= 0.0) {
-        return float4(0.0, 0.0, 0.0, 1.0);
-    }
-
-    float3 eyeDirection = normalize(float3(tangent, -1.0));
-    float3 eyeOffset = float3(side * u.optics.y * 0.5, 0.0, 0.0);
     float3 direction = (u.sceneFromEye * float4(eyeDirection, 0.0)).xyz;
     float3 origin = u.headPosition.xyz + (u.sceneFromEye * float4(eyeOffset, 0.0)).xyz;
 
@@ -126,7 +116,7 @@ fragment float4 stereoFragment(
             if (all(uv >= 0.0) && all(uv <= 1.0)) {
                 float y = cameraLuma.sample(linearSampler, uv, level(0.0)).r;
                 float2 cbcr = cameraChroma.sample(linearSampler, uv, level(0.0)).rg;
-                color = cameraColor(y, cbcr) * edgeFade(uv, 0.04) * u.surroundings.y;
+                color = cameraColor(y, cbcr, u.cameraFormat.x > 0.5) * edgeFade(uv, 0.04) * u.surroundings.y;
             }
         }
     }
@@ -165,8 +155,8 @@ fragment float4 stereoFragment(
 
     if (hit) {
         float2 canvas = surface / mainWidth + u.focus.xy;
-        // Size of one pixel of the glass on the canvas, for antialiasing.
-        float canvasPerPixel = magnification * distance / (pixelsPerMeter * u.lens.y * mainWidth);
+        // Size of one pixel of the picture on the canvas, for antialiasing.
+        float canvasPerPixel = tangentPerPixel * distance / mainWidth;
         float cornerRadius = u.focus.z;
         int count = int(u.layout.w);
 
@@ -189,7 +179,7 @@ fragment float4 stereoFragment(
                 float2 texelsPerPixel = uvPerPixel * u.screenImage[i].yz;
 
                 if (max(texelsPerPixel.x, texelsPerPixel.y) > 1.15) {
-                    // The video has more detail than the glass can show here. Average four
+                    // The video has more detail than the picture can show here. Average four
                     // samples across the pixel so fine text does not shimmer.
                     const float2 offsets[4] = {
                         float2(0.125, 0.375), float2(-0.375, 0.125),
@@ -213,11 +203,58 @@ fragment float4 stereoFragment(
         }
     }
 
+    return color;
+}
+
+// ---- Through a viewer's lenses, one eye on each half of the glass ----
+
+fragment float4 stereoFragment(
+    VertexOut in [[stage_in]],
+    constant Uniforms &u [[buffer(0)]],
+    array<texture2d<float>, kMaxScreens> screenLuma [[texture(0)]],
+    array<texture2d<float>, kMaxScreens> screenChroma [[texture(6)]],
+    texture2d<float> cameraLuma [[texture(12)]],
+    texture2d<float> cameraChroma [[texture(13)]],
+    texture2d<float> surroundingsImage [[texture(14)]],
+    texture2d<float> hudImage [[texture(15)]],
+    sampler linearSampler [[sampler(0)]]
+) {
+    float2 glassSize = u.viewport.xy;
+    float pixelsPerMeter = u.viewport.z;
+    float2 pixel = in.position.xy;
+    float side = pixel.x < glassSize.x * 0.5 ? -1.0 : 1.0;
+
+    // Where this pixel is on the glass, in metres from the centre of this eye's lens.
+    float2 lensCenter = float2(glassSize.x * 0.5 / pixelsPerMeter + side * u.lens.x * 0.5, u.viewport.w);
+    float2 onGlass = float2(pixel.x, glassSize.y - pixel.y) / pixelsPerMeter - lensCenter;
+
+    // The lens magnifies more toward its rim. This is the direction the pixel appears in.
+    float2 r = onGlass / u.lens.y;
+    float r2 = dot(r, r);
+    float magnification = 1.0 + u.lens.z * r2 + u.lens.w * r2 * r2;
+    float2 tangent = r * magnification;
+
+    // Nothing is visible beyond the rim of the lens, or on the line between the eyes.
+    float visible = 1.0 - smoothstep(u.optics.x * 0.96, u.optics.x, length(tangent));
+    visible *= smoothstep(1.0, 2.5, abs(pixel.x - glassSize.x * 0.5));
+    if (visible <= 0.0) {
+        return float4(0.0, 0.0, 0.0, 1.0);
+    }
+
+    float3 eyeDirection = normalize(float3(tangent, -1.0));
+    float3 eyeOffset = float3(side * u.optics.y * 0.5, 0.0, 0.0);
+    float tangentPerPixel = magnification / (pixelsPerMeter * u.lens.y);
+
+    float3 color = sceneColor(
+        u, eyeOffset, eyeDirection, tangentPerPixel,
+        screenLuma, screenChroma, cameraLuma, cameraChroma, surroundingsImage, linearSampler);
+
     // ---- Heads-up display ----
 
     if (u.hud.w > 0.0) {
         // A panel that moves with the head, at the depth of the screens so the eyes can stay
         // converged where they already are.
+        float distance = u.layout.x;
         float3 point = eyeOffset + eyeDirection * (distance / -eyeDirection.z);
         float2 at = point.xy / distance;
         float2 uv = float2(at.x / (2.0 * u.hud.y) + 0.5, 0.5 - (at.y - u.hud.x) / (2.0 * u.hud.z));
@@ -229,4 +266,26 @@ fragment float4 stereoFragment(
     }
 
     return float4(color * visible, 1.0);
+}
+
+// ---- From between the eyes, with no lenses: the view as a recording shows it ----
+
+fragment float4 flatFragment(
+    VertexOut in [[stage_in]],
+    constant Uniforms &u [[buffer(0)]],
+    array<texture2d<float>, kMaxScreens> screenLuma [[texture(0)]],
+    array<texture2d<float>, kMaxScreens> screenChroma [[texture(6)]],
+    texture2d<float> cameraLuma [[texture(12)]],
+    texture2d<float> cameraChroma [[texture(13)]],
+    texture2d<float> surroundingsImage [[texture(14)]],
+    sampler linearSampler [[sampler(0)]]
+) {
+    float2 size = u.viewport.xy;
+    float tangentPerPixel = 2.0 * u.optics.x / size.x;
+    float2 tangent = float2(in.position.x - size.x * 0.5, size.y * 0.5 - in.position.y) * tangentPerPixel;
+
+    float3 color = sceneColor(
+        u, float3(0.0), normalize(float3(tangent, -1.0)), tangentPerPixel,
+        screenLuma, screenChroma, cameraLuma, cameraChroma, surroundingsImage, linearSampler);
+    return float4(color, 1.0);
 }

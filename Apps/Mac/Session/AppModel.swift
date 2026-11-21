@@ -31,10 +31,19 @@ final class AppModel {
     private(set) var isScreenRevealed = false
     private(set) var isCinema = false
     private(set) var hasScreenRecordingPermission = CGPreflightScreenCaptureAccess()
+    /// True while the headset view is being recorded.
+    private(set) var isRecording = false
+    private(set) var recordingStartedAt: Date?
+    /// The newest recording or screenshot.
+    private(set) var lastCapture: URL?
+    /// Why the last recording or screenshot failed, if it did.
+    private(set) var captureError: String?
 
     @ObservationIgnored let hotkeys = HotkeyCenter()
     @ObservationIgnored private let endpoint: HostEndpoint
     @ObservationIgnored private let streams: StreamSession
+    @ObservationIgnored private let recorder: ViewRecorder
+    @ObservationIgnored private let camera: CameraFeed
     @ObservationIgnored private let virtualDisplays = VirtualDisplayManager()
     @ObservationIgnored private let privacy = PrivacyScreen()
     @ObservationIgnored private let resolutionSwitcher = SessionResolutionSwitcher()
@@ -45,6 +54,7 @@ final class AppModel {
     @ObservationIgnored private var sentScene: SceneState?
     @ObservationIgnored private var sentAssetID: String?
     @ObservationIgnored private var environmentAsset: AssetMessage?
+    @ObservationIgnored private var screenshotsInProgress = 0
     private var cinemaAngle = SceneState.cinemaScreenAngle
 
     /// Most virtual monitors the app will add.
@@ -56,7 +66,11 @@ final class AppModel {
         settings = AppSettings.load()
         let endpoint = HostEndpoint(hostName: Host.current().localizedName ?? "Mac")
         self.endpoint = endpoint
-        streams = StreamSession { frame in endpoint.send(frame) }
+        let streams = StreamSession { frame in endpoint.send(frame) }
+        self.streams = streams
+        let camera = CameraFeed { frame in endpoint.send(frame) }
+        self.camera = camera
+        recorder = ViewRecorder(camera: camera) { streams.latestFrames() }
     }
 
     // MARK: - Launch and exit
@@ -70,7 +84,19 @@ final class AppModel {
         hotkeys.onAction = { [weak self] action in self?.perform(action) }
         registerHotkeys()
 
-        endpoint.setVideoHandler { [streams] frame in streams.handle(frame) }
+        endpoint.setVideoHandler { [streams, recorder, camera] frame in
+            switch frame.type {
+            case .view: recorder.handle(frame)
+            case .camera: camera.handle(frame)
+            default: streams.handle(frame)
+            }
+        }
+        recorder.setFieldOfView(degrees: settings.capture.fieldOfView)
+        recorder.setFailureHandler { [weak self] message in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { self?.recordingDidFail(message) }
+            }
+        }
         endpoint.start(preference: settings.general.connection) { [weak self] event in
             // Dispatch rather than a task: events must arrive in order.
             DispatchQueue.main.async {
@@ -102,6 +128,10 @@ final class AppModel {
 
     /// Puts the Mac back the way it was, synchronously, for use while the app is exiting.
     func restoreMac() {
+        recorder.finishNow()
+        isRecording = false
+        recordingStartedAt = nil
+        camera.setWanted(false)
         privacy.clear()
         virtualDisplays.removeAll()
         resolutionSwitcher.restore()
@@ -176,6 +206,7 @@ final class AppModel {
         guard phase != .idle else { return }
         phase = .stopping
         pushScene()
+        await finishRecording()
         await streams.stopAll()
         restoreMac()
         stats = []
@@ -307,14 +338,24 @@ final class AppModel {
             distanceMeters: distance,
             curvature: SceneBuilder.curvature(for: settings.view.curve, screenCount: screens.count),
             environment: environment,
-            showStats: settings.view.showStats
+            showStats: settings.view.showStats,
+            // The camera's picture is on the phone. To draw a view that looks through it, the
+            // Mac has to be sent it.
+            sharesCamera: phase == .running && environment.kind == .passthrough
+                && (isRecording || screenshotsInProgress > 0)
         )
     }
 
     /// Sends the scene to the phone if it differs from what the phone already has.
     private func pushScene() {
-        guard peer != nil else { return }
         let scene = makeScene()
+        if phase == .running {
+            // A recording ends with the session, and should not end on an empty scene, or
+            // without the camera's picture.
+            recorder.setScene(scene)
+            camera.setWanted(scene.sharesCamera)
+        }
+        guard peer != nil else { return }
         if let asset = environmentAsset, scene.environment.imageAssetID == asset.id, sentAssetID != asset.id {
             endpoint.send(asset.frame())
             sentAssetID = asset.id
@@ -327,6 +368,7 @@ final class AppModel {
     private func loadEnvironmentImage() {
         guard let path = settings.surroundings.imagePath else {
             environmentAsset = nil
+            recorder.setSurroundings(nil)
             return
         }
         Task { [weak self] in
@@ -335,6 +377,7 @@ final class AppModel {
             }.value
             guard let self, self.settings.surroundings.imagePath == path else { return }
             self.environmentAsset = asset
+            self.recorder.setSurroundings(asset)
             self.pushScene()
         }
     }
@@ -353,6 +396,9 @@ final class AppModel {
         }
         if settings.surroundings.imagePath != old.surroundings.imagePath {
             loadEnvironmentImage()
+        }
+        if settings.capture.fieldOfView != old.capture.fieldOfView {
+            recorder.setFieldOfView(degrees: settings.capture.fieldOfView)
         }
         // The scene goes out at once so zooming feels immediate; displays and streams follow.
         pushScene()
@@ -376,6 +422,7 @@ final class AppModel {
             disconnectGrace?.cancel()
             // A new link starts with an empty decoder and has seen neither scene nor image.
             streams.resetForNewLink()
+            camera.resetForNewLink()
             sentScene = nil
             sentAssetID = nil
             pushScene()
@@ -491,6 +538,8 @@ final class AppModel {
         case .addMonitor: addVirtualMonitor()
         case .removeMonitor: removeVirtualMonitor()
         case .toggleStats: settings.view.showStats.toggle()
+        case .toggleRecording: toggleRecording()
+        case .screenshot: takeScreenshot()
         }
     }
 
@@ -605,6 +654,93 @@ final class AppModel {
         privacy.coverImagePath = path
         privacy.coverStyle = .image
         settings.privacy = privacy
+    }
+
+    // MARK: - Capturing the view
+
+    /// Starts recording what the wearer sees to a movie, or ends the recording.
+    func toggleRecording() {
+        if isRecording {
+            Task { await finishRecording() }
+            return
+        }
+        guard phase == .running, let url = captureURL(extension: "mov") else { return }
+        isRecording = true
+        recordingStartedAt = .now
+        pushScene()
+        toast("Recording")
+        Task { [weak self, recorder] in
+            do {
+                try await recorder.startRecording(to: url)
+            } catch {
+                self?.recordingDidFail(error.localizedDescription)
+            }
+        }
+    }
+
+    /// Saves a picture of what the wearer sees.
+    func takeScreenshot() {
+        guard phase == .running, let url = captureURL(extension: "png") else { return }
+        screenshotsInProgress += 1
+        pushScene()
+        Task { [weak self, recorder] in
+            do {
+                try await recorder.takeScreenshot(to: url)
+                self?.lastCapture = url
+                self?.toast("Screenshot saved")
+            } catch {
+                self?.captureError = error.localizedDescription
+            }
+            self?.screenshotsInProgress -= 1
+            self?.pushScene()
+        }
+    }
+
+    /// Ends the recording, if there is one, and waits for the movie to be complete.
+    private func finishRecording() async {
+        guard isRecording else { return }
+        isRecording = false
+        recordingStartedAt = nil
+        let url = await recorder.stopRecording()
+        // After the last frame has been drawn, so the camera's picture is there for it.
+        pushScene()
+        guard let url else { return }
+        lastCapture = url
+        toast("Recording saved")
+    }
+
+    private func recordingDidFail(_ message: String) {
+        isRecording = false
+        recordingStartedAt = nil
+        captureError = message
+        pushScene()
+        toast("Recording stopped")
+    }
+
+    /// Where the next capture goes: a file named for this moment in the chosen folder, which is
+    /// created if need be.
+    private func captureURL(extension fileExtension: String) -> URL? {
+        captureError = nil
+        let folder = settings.capture.folder
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        } catch {
+            captureError = "LaptopVR cannot save to \(folder.path): \(error.localizedDescription)"
+            return nil
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
+        let name = "LaptopVR " + formatter.string(from: .now)
+        var url = folder.appending(path: "\(name).\(fileExtension)")
+        // Two captures within the same second.
+        var copy = 2
+        while FileManager.default.fileExists(atPath: url.path) {
+            url = folder.appending(path: "\(name) \(copy).\(fileExtension)")
+            copy += 1
+        }
+        return url
     }
 
     /// Shows a short message in the headset.

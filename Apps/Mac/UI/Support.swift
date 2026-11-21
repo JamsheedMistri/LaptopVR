@@ -133,7 +133,7 @@ extension Binding where Value == VRProtocol.RGBColor {
     }
 }
 
-// MARK: - Choosing a picture
+// MARK: - Choosing files
 
 @MainActor
 enum ImageChooser {
@@ -142,6 +142,19 @@ enum ImageChooser {
         panel.allowedContentTypes = [.image]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
+        NSApp.activate()
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+}
+
+@MainActor
+enum FolderChooser {
+    static func choose() -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
         NSApp.activate()
         return panel.runModal() == .OK ? panel.url : nil
     }

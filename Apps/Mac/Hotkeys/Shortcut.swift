@@ -16,6 +16,8 @@ enum HotkeyAction: String, Codable, CaseIterable, Identifiable {
     case addMonitor
     case removeMonitor
     case toggleStats
+    case toggleRecording
+    case screenshot
 
     var id: String { rawValue }
 
@@ -34,6 +36,8 @@ enum HotkeyAction: String, Codable, CaseIterable, Identifiable {
         case .addMonitor: "Add a virtual monitor"
         case .removeMonitor: "Remove a virtual monitor"
         case .toggleStats: "Toggle statistics overlay"
+        case .toggleRecording: "Start or stop recording the view"
+        case .screenshot: "Take a screenshot of the view"
         }
     }
 }
@@ -70,6 +74,9 @@ struct Shortcut: Codable, Equatable {
         .addMonitor: standard(kVK_ANSI_N, "N"),
         .removeMonitor: standard(kVK_Delete, "⌫"),
         .toggleStats: standard(kVK_ANSI_S, "S"),
+        // The digits macOS uses for its own recording and screenshot shortcuts.
+        .toggleRecording: standard(kVK_ANSI_5, "5"),
+        .screenshot: standard(kVK_ANSI_3, "3"),
     ]
 
     /// Builds a shortcut from a key press, or nil if it has no Command, Control, or Option

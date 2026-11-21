@@ -1,3 +1,4 @@
+import CoreVideo
 import Foundation
 import VRProtocol
 
@@ -83,6 +84,11 @@ final class StreamSession: @unchecked Sendable {
 
     func resetForNewLink() {
         lock.withLock { Array(streams.values) }.forEach { $0.resetForNewLink() }
+    }
+
+    /// The newest captured frame of every stream that has one. Safe to call from any thread.
+    func latestFrames() -> [UInt16: CVPixelBuffer] {
+        lock.withLock { streams }.compactMapValues(\.latestPixelBuffer)
     }
 
     func takeStats() -> [StreamStats] {

@@ -77,7 +77,7 @@ public struct ScreenDescriptor: Codable, Sendable, Equatable, Identifiable {
 }
 
 /// Everything the phone needs to lay out the scene. The Mac owns this and resends it on any change;
-/// the phone owns head pose and never sends it back.
+/// the phone owns head pose, and reports it as `ViewPose` so the Mac can record the view.
 public struct SceneState: Codable, Sendable, Equatable {
     public var sessionActive: Bool
     public var screens: [ScreenDescriptor]
@@ -92,6 +92,9 @@ public struct SceneState: Codable, Sendable, Equatable {
     public var curvature: Double
     public var environment: EnvironmentSettings
     public var showStats: Bool
+    /// The Mac is recording the view in passthrough, so the phone should send what its camera
+    /// sees.
+    public var sharesCamera: Bool
 
     public init(
         sessionActive: Bool = false,
@@ -102,7 +105,8 @@ public struct SceneState: Codable, Sendable, Equatable {
         distanceMeters: Double = 1.5,
         curvature: Double = 0,
         environment: EnvironmentSettings = EnvironmentSettings(),
-        showStats: Bool = false
+        showStats: Bool = false,
+        sharesCamera: Bool = false
     ) {
         self.sessionActive = sessionActive
         self.screens = screens
@@ -113,6 +117,7 @@ public struct SceneState: Codable, Sendable, Equatable {
         self.curvature = curvature
         self.environment = environment
         self.showStats = showStats
+        self.sharesCamera = sharesCamera
     }
 
     public static let defaultScreenAngle = 100.0

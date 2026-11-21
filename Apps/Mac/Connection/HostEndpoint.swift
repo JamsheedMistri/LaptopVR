@@ -122,8 +122,8 @@ final class HostEndpoint: @unchecked Sendable {
         lock.withLock { activeLink }?.send(frame)
     }
 
-    /// Receives video acknowledgements and keyframe requests directly on the link's queue,
-    /// bypassing the main thread.
+    /// Receives video acknowledgements, keyframe requests, the phone's view, and its camera's
+    /// picture directly on the link's queue, bypassing the main thread.
     func setVideoHandler(_ handler: (@Sendable (WireFrame) -> Void)?) {
         lock.withLock { videoHandler = handler }
     }
@@ -189,8 +189,10 @@ final class HostEndpoint: @unchecked Sendable {
         pending[transport] = connection
         connection.link.start { [weak self, weak connection] event in
             guard let self, let connection else { return }
-            // Video feedback arrives at frame rate; hand it over without leaving this queue.
-            if case .frame(let frame) = event, frame.type == .videoAck || frame.type == .keyframeRequest {
+            // Video feedback, the phone's view, and its camera's picture arrive at frame rate;
+            // hand them over without leaving this queue.
+            if case .frame(let frame) = event,
+               [.videoAck, .keyframeRequest, .view, .camera].contains(frame.type) {
                 self.lock.withLock { self.videoHandler }?(frame)
                 return
             }

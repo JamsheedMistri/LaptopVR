@@ -13,6 +13,9 @@ struct MenuPopover: View {
             if let error = model.lastError {
                 Notice(text: error, symbol: "exclamationmark.triangle.fill", tint: .orange)
             }
+            if let error = model.captureError {
+                Notice(text: error, symbol: "exclamationmark.triangle.fill", tint: .orange)
+            }
             if !model.hasScreenRecordingPermission {
                 Notice(
                     text: "Allow Screen Recording so LaptopVR can show your screen in the headset.",
@@ -104,6 +107,38 @@ struct MenuPopover: View {
                 }
             }
             .disabled(model.phase != .running)
+
+            HStack(spacing: 8) {
+                ActionButton(
+                    title: "Record",
+                    symbol: model.isRecording ? "stop.circle.fill" : "record.circle",
+                    isOn: model.isRecording,
+                    tint: .red,
+                    since: model.recordingStartedAt,
+                    help: shortcutHelp(.toggleRecording)
+                ) {
+                    model.toggleRecording()
+                }
+                ActionButton(title: "Screenshot", symbol: "camera.viewfinder", help: shortcutHelp(.screenshot)) {
+                    model.takeScreenshot()
+                }
+            }
+            .disabled(model.phase != .running)
+
+            if let capture = model.lastCapture {
+                HStack(spacing: 6) {
+                    Text(capture.lastPathComponent)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 0)
+                    Button("Show in Finder") {
+                        NSWorkspace.shared.activateFileViewerSelecting([capture])
+                    }
+                    .buttonStyle(.link)
+                }
+                .font(.caption)
+            }
         }
     }
 
@@ -247,17 +282,29 @@ private struct ActionButton: View {
     let title: String
     let symbol: String
     var isOn = false
+    var tint = Color.accentColor
+    /// When set, the time since then is shown counting up in place of the title.
+    var since: Date?
     let help: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: symbol)
-                .font(.callout)
-                .frame(maxWidth: .infinity)
+            Label {
+                if let since {
+                    Text(since, style: .timer)
+                        .monospacedDigit()
+                } else {
+                    Text(title)
+                }
+            } icon: {
+                Image(systemName: symbol)
+            }
+            .font(.callout)
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glass)
-        .tint(isOn ? .accentColor : nil)
+        .tint(isOn ? tint : nil)
         .help(help)
     }
 }

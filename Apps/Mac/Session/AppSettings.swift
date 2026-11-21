@@ -103,6 +103,21 @@ struct QualitySettings: Codable, Equatable {
     var resolution: ResolutionPreference = .automatic
 }
 
+/// Recordings and screenshots of the headset view.
+struct CaptureSettings: Codable, Equatable {
+    /// Folder they are saved in. Nil is a LaptopVR folder in Movies.
+    var folderPath: String?
+    /// Angle the picture spans from left to right, in degrees.
+    var fieldOfView = 110.0
+
+    static let fieldOfViewRange = 60.0...130.0
+
+    var folder: URL {
+        folderPath.map { URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? URL.moviesDirectory.appending(path: "LaptopVR", directoryHint: .isDirectory)
+    }
+}
+
 struct GeneralSettings: Codable, Equatable {
     var connection: ConnectionPreference = .automatic
     /// Start when the iPhone enters its headset view and stop when it leaves.
@@ -118,6 +133,7 @@ struct AppSettings: Codable, Equatable {
     var privacy = PrivacySettings()
     var displays = DisplaySettings()
     var quality = QualitySettings()
+    var capture = CaptureSettings()
     var general = GeneralSettings()
     var shortcuts = Shortcut.defaults
 
@@ -130,6 +146,7 @@ struct AppSettings: Codable, Equatable {
         privacy = (try? container.decode(PrivacySettings.self, forKey: .privacy)) ?? PrivacySettings()
         displays = (try? container.decode(DisplaySettings.self, forKey: .displays)) ?? DisplaySettings()
         quality = (try? container.decode(QualitySettings.self, forKey: .quality)) ?? QualitySettings()
+        capture = (try? container.decode(CaptureSettings.self, forKey: .capture)) ?? CaptureSettings()
         general = (try? container.decode(GeneralSettings.self, forKey: .general)) ?? GeneralSettings()
         let saved = (try? container.decode([HotkeyAction: Shortcut].self, forKey: .shortcuts)) ?? [:]
         // Keep defaults for actions added since the settings were saved.

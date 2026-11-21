@@ -7,6 +7,9 @@ public enum LaptopVRProtocol {
     public static let bonjourServiceType = "_laptopvr._tcp"
     /// Most screens a scene can contain. Mirrors the texture slots in the phone's shader.
     public static let maxScreens = 6
+    /// Stream number of the phone's camera, in the acknowledgements and keyframe requests the
+    /// Mac sends for it. No screen has this number.
+    public static let cameraStream: UInt16 = 0xFFFF
 }
 
 public enum MessageType: UInt8, Sendable {
@@ -21,6 +24,8 @@ public enum MessageType: UInt8, Sendable {
     case videoFrame = 16
     case videoAck = 17
     case keyframeRequest = 18
+    case view = 19
+    case camera = 20
     case ping = 32
     case pong = 33
 }

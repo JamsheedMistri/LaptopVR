@@ -27,6 +27,7 @@ targets:
     sources:
       - Apps/Mac
       - Shared/Assets
+      - Shared/Render
     dependencies:
       - package: LaptopVRKit
         product: LaptopVRKit
@@ -58,6 +59,7 @@ targets:
     sources:
       - Apps/iOS
       - Shared/Assets
+      - Shared/Render
     dependencies:
       - package: LaptopVRKit
         product: LaptopVRKit

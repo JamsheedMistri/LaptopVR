@@ -19,6 +19,10 @@ struct ByteWriter {
         withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) }
     }
 
+    mutating func write(_ value: Float) {
+        write(value.bitPattern)
+    }
+
     mutating func write(_ bytes: Data) {
         data.append(bytes)
     }
@@ -51,6 +55,10 @@ struct ByteReader {
         }
         cursor += size
         return value
+    }
+
+    mutating func readFloat() throws -> Float {
+        Float(bitPattern: try read(UInt32.self))
     }
 
     mutating func read(count: Int) throws -> Data {

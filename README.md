@@ -9,6 +9,7 @@ Use your Mac in VR with an iPhone and a Cardboard-style viewer. The Mac streams 
 - **Extra monitors:** add up to four virtual displays that macOS treats as real ones.
 - **View modes:** Anchored keeps the screens fixed in space; Follow brings them along when you look away. Cinema shows one screen in a dark room.
 - **Surroundings:** a colour, a gradient, your own image, or the iPhone camera as passthrough.
+- **Recording and screenshots:** save what you see in the headset as a flat video or picture on the Mac, showing every screen and where you are looking.
 - **Privacy screen:** covers the Mac's display, or turns its backlight off, while you work in the headset.
 - **Viewer setup:** scan your viewer's Cardboard QR code, or pick a preset.
 
@@ -43,6 +44,8 @@ All use ⌃⌥⌘ and can be changed in Settings.
 | ← and → | Look at the previous or next display |
 | N and ⌫ | Add or remove a monitor |
 | S | Stats |
+| 5 | Start or stop recording the view |
+| 3 | Screenshot of the view |
 
 ## Notes
 

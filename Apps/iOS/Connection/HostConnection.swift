@@ -19,6 +19,10 @@ final class HostConnection: @unchecked Sendable {
         case command(HostCommand)
         case stats(HostStats)
         case asset(AssetMessage)
+        /// The Mac has decoded a frame of the camera it was sent.
+        case cameraFrameDecoded
+        /// The Mac cannot decode the camera's frames until it is sent a keyframe.
+        case cameraKeyframeNeeded
     }
 
     /// One stream's decoder and the queue it is confined to.
@@ -160,6 +164,10 @@ final class HostConnection: @unchecked Sendable {
                 if let stats = frame.decodeJSON(HostStats.self) { onEvent?(.stats(stats)) }
             case .asset where isActive:
                 if let asset = try? AssetMessage(frame: frame) { onEvent?(.asset(asset)) }
+            case .videoAck where isActive && frame.stream == LaptopVRProtocol.cameraStream:
+                onEvent?(.cameraFrameDecoded)
+            case .keyframeRequest where isActive && frame.stream == LaptopVRProtocol.cameraStream:
+                onEvent?(.cameraKeyframeNeeded)
             default:
                 break
             }

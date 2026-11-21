@@ -104,6 +104,11 @@ final class DisplayStream: NSObject, SCStreamOutput, SCStreamDelegate, @unchecke
         lock.withLock { configuration }
     }
 
+    /// The newest captured frame, as it was before encoding. A recording of the view draws it.
+    var latestPixelBuffer: CVPixelBuffer? {
+        lock.withLock { latest?.pixelBuffer }
+    }
+
     // MARK: - Lifecycle
 
     func start() async throws {
@@ -421,8 +426,9 @@ final class DisplayStream: NSObject, SCStreamOutput, SCStreamDelegate, @unchecke
         capture.pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange
         capture.colorMatrix = CGDisplayStream.yCbCrMatrix_ITU_R_709_2
         capture.colorSpaceName = CGColorSpace.sRGB
-        // Room for the frame being encoded, the newest frame held back, and one arriving.
-        capture.queueDepth = 5
+        // Room for the frame being encoded, the newest frame held back, one arriving, and one
+        // a recording of the view is still drawing.
+        capture.queueDepth = 6
         capture.showsCursor = true
         capture.capturesAudio = false
         return capture

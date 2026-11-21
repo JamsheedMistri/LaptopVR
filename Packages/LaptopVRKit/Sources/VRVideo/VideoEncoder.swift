@@ -65,7 +65,9 @@ public final class VideoEncoder: @unchecked Sendable {
 
     private let session: VTCompressionSession
 
-    public init(configuration: VideoEncoderConfiguration) throws {
+    /// `isRec709` says the frames hold BT.709 colour, as screen capture does, and marks the
+    /// video so. Pass false for frames that say what their own colour is, as a camera's do.
+    public init(configuration: VideoEncoderConfiguration, isRec709: Bool = true) throws {
         self.configuration = configuration
         let codecType = configuration.codec == .h264 ? kCMVideoCodecType_H264 : kCMVideoCodecType_HEVC
 
@@ -105,7 +107,7 @@ public final class VideoEncoder: @unchecked Sendable {
         let profile = configuration.codec == .h264
             ? kVTProfileLevel_H264_High_AutoLevel
             : kVTProfileLevel_HEVC_Main_AutoLevel
-        let properties: [(CFString, Any)] = [
+        var properties: [(CFString, Any)] = [
             (kVTCompressionPropertyKey_RealTime, true),
             (kVTCompressionPropertyKey_AllowFrameReordering, false),
             (kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality, true),
@@ -114,10 +116,14 @@ public final class VideoEncoder: @unchecked Sendable {
             (kVTCompressionPropertyKey_AverageBitRate, configuration.bitsPerSecond),
             (kVTCompressionPropertyKey_MaxKeyFrameInterval, Int(Int32.max)),
             (kVTCompressionPropertyKey_MaxFrameDelayCount, 0),
-            (kVTCompressionPropertyKey_ColorPrimaries, kCVImageBufferColorPrimaries_ITU_R_709_2),
-            (kVTCompressionPropertyKey_TransferFunction, kCVImageBufferTransferFunction_ITU_R_709_2),
-            (kVTCompressionPropertyKey_YCbCrMatrix, kCVImageBufferYCbCrMatrix_ITU_R_709_2),
         ]
+        if isRec709 {
+            properties += [
+                (kVTCompressionPropertyKey_ColorPrimaries, kCVImageBufferColorPrimaries_ITU_R_709_2),
+                (kVTCompressionPropertyKey_TransferFunction, kCVImageBufferTransferFunction_ITU_R_709_2),
+                (kVTCompressionPropertyKey_YCbCrMatrix, kCVImageBufferYCbCrMatrix_ITU_R_709_2),
+            ]
+        }
         for (key, value) in properties {
             // Encoders reject properties they do not support; none of these are essential.
             VTSessionSetProperty(session, key: key, value: value as CFTypeRef)

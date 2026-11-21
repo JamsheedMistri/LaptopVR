@@ -72,6 +72,17 @@ private struct DisplaysTab: View {
     var body: some View {
         Form {
             Section {
+                Picker("Main screen resolution", selection: $model.settings.displays.sessionResolution) {
+                    Text("Keep current").tag(SessionResolution?.none)
+                    ForEach(SessionResolutionSwitcher.options(for: CGMainDisplayID()), id: \.self) { option in
+                        Text(verbatim: "\(option.width) × \(option.height)").tag(Optional(option))
+                    }
+                }
+            } footer: {
+                Text("A lower resolution makes text larger and easier to read in the headset. Your Mac switches back when the session ends.")
+            }
+
+            Section {
                 Toggle("Extra monitors", isOn: $model.settings.displays.multiMonitor)
 
                 ForEach($model.settings.displays.virtualMonitors) { $monitor in
@@ -117,17 +128,6 @@ private struct DisplaysTab: View {
                 Text("Arrangement")
             } footer: {
                 Text("Drag a monitor to place it. Extra monitors appear here while a session is running, and macOS remembers where you put them.")
-            }
-
-            Section {
-                Picker("Main screen resolution", selection: $model.settings.displays.sessionResolution) {
-                    Text("Keep current").tag(SessionResolution?.none)
-                    ForEach(SessionResolutionSwitcher.options(for: CGMainDisplayID()), id: \.self) { option in
-                        Text(verbatim: "\(option.width) × \(option.height)").tag(Optional(option))
-                    }
-                }
-            } footer: {
-                Text("A lower resolution makes text larger and easier to read in the headset. Your Mac switches back when the session ends.")
             }
         }
         .formStyle(.grouped)
@@ -356,6 +356,30 @@ private struct GeneralTab: View {
                 Toggle("Start when the iPhone enters the headset view", isOn: $model.settings.general.startsWithHeadset)
             } footer: {
                 Text("Automatic uses the cable whenever one is plugged in and Wi-Fi otherwise. A cable has the lowest and steadiest delay, and keeps the iPhone charged.")
+            }
+
+            Section {
+                LabeledContent("Save to") {
+                    Text((model.settings.capture.folder.path as NSString).abbreviatingWithTildeInPath)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Button("Choose…") {
+                        if let url = FolderChooser.choose() {
+                            model.settings.capture.folderPath = url.path
+                        }
+                    }
+                }
+                LabeledContent("Field of view") {
+                    Slider(value: $model.settings.capture.fieldOfView, in: CaptureSettings.fieldOfViewRange)
+                    Text("\(Int(model.settings.capture.fieldOfView.rounded()))°")
+                        .monospacedDigit()
+                        .frame(width: 64, alignment: .trailing)
+                }
+            } header: {
+                Text("Recordings and Screenshots")
+            } footer: {
+                Text("Recordings and screenshots show the headset view as one flat picture. A wider field of view takes in more of the screens at once and stretches them toward its edges.")
             }
 
             Section {

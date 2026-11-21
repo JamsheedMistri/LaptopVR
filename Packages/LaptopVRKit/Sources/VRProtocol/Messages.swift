@@ -222,6 +222,94 @@ public struct VideoAck: Sendable {
     }
 }
 
+/// Where the wearer is looking, sent by the phone many times a second during a session. With the
+/// scene, which the Mac already has, it is everything needed to draw what the wearer sees.
+///
+/// Rotations are quaternions with the vector part first, as simd stores them. Each turns a
+/// direction in the eye's axes (x right, y up, z toward the wearer) into the axes named.
+public struct ViewPose: Sendable, Equatable {
+    /// Into the scene's axes, where the screens are.
+    public var sceneFromEye: SIMD4<Float>
+    /// Into the axes of the surroundings, which stay level.
+    public var surroundingsFromEye: SIMD4<Float>
+    /// Midpoint between the eyes in the scene, in metres.
+    public var headPosition: SIMD3<Float>
+    /// Canvas point that sits at the scene's centre.
+    public var focus: SIMD2<Float>
+
+    public init(
+        sceneFromEye: SIMD4<Float> = SIMD4(0, 0, 0, 1),
+        surroundingsFromEye: SIMD4<Float> = SIMD4(0, 0, 0, 1),
+        headPosition: SIMD3<Float> = SIMD3(),
+        focus: SIMD2<Float> = SIMD2()
+    ) {
+        self.sceneFromEye = sceneFromEye
+        self.surroundingsFromEye = surroundingsFromEye
+        self.headPosition = headPosition
+        self.focus = focus
+    }
+
+    public func frame() -> WireFrame {
+        var writer = ByteWriter(capacity: 52)
+        for value in [
+            sceneFromEye.x, sceneFromEye.y, sceneFromEye.z, sceneFromEye.w,
+            surroundingsFromEye.x, surroundingsFromEye.y, surroundingsFromEye.z, surroundingsFromEye.w,
+            headPosition.x, headPosition.y, headPosition.z,
+            focus.x, focus.y,
+        ] {
+            writer.write(value)
+        }
+        return WireFrame(type: .view, payload: writer.data)
+    }
+
+    public init(frame: WireFrame) throws {
+        var reader = ByteReader(frame.payload)
+        sceneFromEye = SIMD4(try reader.readFloat(), try reader.readFloat(), try reader.readFloat(), try reader.readFloat())
+        surroundingsFromEye = SIMD4(try reader.readFloat(), try reader.readFloat(), try reader.readFloat(), try reader.readFloat())
+        headPosition = SIMD3(try reader.readFloat(), try reader.readFloat(), try reader.readFloat())
+        focus = SIMD2(try reader.readFloat(), try reader.readFloat())
+    }
+}
+
+/// One encoded frame of the phone's camera, with what is needed to draw it behind the screens.
+/// Sent by the phone while the scene asks for it. The Mac acknowledges each one the way the
+/// phone acknowledges the screens' frames, on the stream `LaptopVRProtocol.cameraStream`.
+public struct CameraPacket: Sendable {
+    public var video: VideoPacket
+    /// Focal lengths and principal point (fx, fy, cx, cy) as fractions of the image size.
+    public var intrinsics: SIMD4<Float>
+    /// Quaternion, vector part first, that turns a direction in the camera's axes when the
+    /// frame was taken into the axes of the surroundings. See `ViewPose`.
+    public var surroundingsFromCamera: SIMD4<Float>
+
+    public init(video: VideoPacket, intrinsics: SIMD4<Float>, surroundingsFromCamera: SIMD4<Float>) {
+        self.video = video
+        self.intrinsics = intrinsics
+        self.surroundingsFromCamera = surroundingsFromCamera
+    }
+
+    public func frame() -> WireFrame {
+        let video = video.frame()
+        var writer = ByteWriter(capacity: 32 + video.payload.count)
+        for value in [
+            intrinsics.x, intrinsics.y, intrinsics.z, intrinsics.w,
+            surroundingsFromCamera.x, surroundingsFromCamera.y, surroundingsFromCamera.z, surroundingsFromCamera.w,
+        ] {
+            writer.write(value)
+        }
+        writer.write(video.payload)
+        return WireFrame(type: .camera, flags: video.flags, stream: video.stream, payload: writer.data)
+    }
+
+    public init(frame: WireFrame) throws {
+        var reader = ByteReader(frame.payload)
+        intrinsics = SIMD4(try reader.readFloat(), try reader.readFloat(), try reader.readFloat(), try reader.readFloat())
+        surroundingsFromCamera = SIMD4(try reader.readFloat(), try reader.readFloat(), try reader.readFloat(), try reader.readFloat())
+        video = try VideoPacket(frame: WireFrame(
+            type: .videoFrame, flags: frame.flags, stream: frame.stream, payload: reader.readRemaining()))
+    }
+}
+
 /// A named blob, used for the environment background image.
 public struct AssetMessage: Sendable {
     public var id: String
