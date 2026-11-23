@@ -33,12 +33,13 @@ struct ViewerProfile: Codable, Equatable, Sendable {
         name: "Cardboard (2015)", screenToLens: 0.039, lensSeparation: 0.064,
         verticalAlignment: .bottom, trayToLens: 0.035, k1: 0.34, k2: 0.55, fieldOfView: 60)
 
-    /// For plastic headsets with adjustable lenses and no QR code.
+    /// For plastic headsets with adjustable lenses and no QR code. The one a new install starts
+    /// with.
     static let generic = ViewerProfile(
         name: "Generic headset", screenToLens: 0.040, lensSeparation: 0.063,
         verticalAlignment: .center, trayToLens: 0, k1: 0.22, k2: 0.24, fieldOfView: 50)
 
-    static let presets = [cardboardV2, cardboardV1, generic]
+    static let presets = [generic, cardboardV2, cardboardV1]
 
     /// Phone bezel between the tray and the first row of pixels, as Cardboard assumes it.
     private static let bezel: Float = 0.003

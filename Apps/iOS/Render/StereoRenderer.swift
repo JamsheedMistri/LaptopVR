@@ -27,7 +27,7 @@ final class StereoRenderer: NSObject, CAMetalDisplayLinkDelegate, @unchecked Sen
     /// Everything other threads hand to the renderer.
     private struct Inputs {
         var scene = SceneState()
-        var profile = ViewerProfile.cardboardV2
+        var profile = ViewerProfile.generic
         var side = LandscapeSide.right
         var pixelsPerMeter: Float = 18_110
         var recenterRequested = false

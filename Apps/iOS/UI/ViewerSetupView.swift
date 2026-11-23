@@ -15,7 +15,7 @@ struct ViewerSetupView: View {
                     Label("Scan Viewer QR Code", systemImage: "qrcode.viewfinder")
                 }
             } footer: {
-                Text("Most viewers have a QR code printed on them that describes their lenses. It is the same code the Google Cardboard app asks for.")
+                Text("Most viewers have a QR code printed on them that describes their lenses.")
             }
 
             Section("Viewer") {

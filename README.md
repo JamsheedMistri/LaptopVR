@@ -1,6 +1,6 @@
 # LaptopVR
 
-Use your Mac in VR with an iPhone and a Cardboard-style viewer. The Mac streams its screen to the phone, which shows it as a large virtual display that stays put as you turn your head.
+Use your Mac in VR with an iPhone and a VR headset that holds it. The Mac streams its screen to the phone, which shows it as a large virtual display that stays put as you turn your head.
 
 ## Features
 
@@ -11,13 +11,13 @@ Use your Mac in VR with an iPhone and a Cardboard-style viewer. The Mac streams 
 - **Surroundings:** a colour, a gradient, your own image, or the iPhone camera as passthrough.
 - **Recording and screenshots:** save what you see in the headset as a flat video or picture on the Mac, showing every screen and where you are looking.
 - **Privacy screen:** covers the Mac's display, or turns its backlight off, while you work in the headset.
-- **Viewer setup:** scan your viewer's Cardboard QR code, or pick a preset.
+- **Viewer setup:** scan the QR code printed on your headset, or pick a preset.
 
 ## Requirements
 
 - macOS 26 and iOS 26 or later
 - Xcode 27 and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
-- A Cardboard-compatible viewer
+- A VR headset for iPhone: the kind with two lenses that the phone slips into
 
 ## Build and run
 

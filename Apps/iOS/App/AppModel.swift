@@ -59,7 +59,7 @@ final class AppModel {
     init() {
         let defaults = UserDefaults.standard
         profile = defaults.data(forKey: Keys.profile)
-            .flatMap { try? JSONDecoder().decode(ViewerProfile.self, from: $0) } ?? .cardboardV2
+            .flatMap { try? JSONDecoder().decode(ViewerProfile.self, from: $0) } ?? .generic
         entersAutomatically = defaults.object(forKey: Keys.entersAutomatically) as? Bool ?? true
 
         let passthrough = Passthrough(tracker: tracker)

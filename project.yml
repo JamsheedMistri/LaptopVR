@@ -89,7 +89,7 @@ targets:
         # Allows 120 Hz rendering on ProMotion iPhones.
         CADisableMinimumFrameDurationOnPhone: true
         ITSAppUsesNonExemptEncryption: false
-        NSCameraUsageDescription: LaptopVR uses the camera to show your surroundings in passthrough mode and to scan your viewer's QR code.
+        NSCameraUsageDescription: LaptopVR uses the camera to show your surroundings in passthrough mode, to include them when you record your view on your Mac, and to scan your viewer's QR code.
         NSLocalNetworkUsageDescription: LaptopVR receives your Mac's screen over the local network when no cable is connected.
         NSBonjourServices:
           - _laptopvr._tcp
