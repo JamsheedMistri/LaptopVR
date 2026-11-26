@@ -2,6 +2,12 @@
 
 Use your Mac in VR with an iPhone and a VR headset that holds it. The Mac streams its screen to the phone, which shows it as a large virtual display that stays put as you turn your head.
 
+## Get LaptopVR
+
+- **iPhone:** [Download on the App Store](https://apps.apple.com/us/app/laptopvr/id6838586901)
+- **Mac:** [Download the latest release](https://github.com/JamsheedMistri/LaptopVR/releases/latest)
+- **Website:** [laptopvr.app](https://laptopvr.app)
+
 ## Features
 
 - **Low latency:** ScreenCaptureKit capture, hardware H.264 or HEVC, and a Metal stereo renderer at up to 120 fps.
@@ -16,8 +22,8 @@ Use your Mac in VR with an iPhone and a VR headset that holds it. The Mac stream
 ## Requirements
 
 - macOS 26 and iOS 26 or later
-- Xcode 27 and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 - A VR headset for iPhone: the kind with two lenses that the phone slips into
+- To build it yourself: Xcode 27 and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 
 ## Build and run
 
@@ -54,3 +60,7 @@ Extra monitors use a private macOS API (`CGVirtualDisplay`), so the Mac app cann
 ## About
 
 LaptopVR began as a project for Cal Hacks 8.0. The submission is on [Devpost](https://devpost.com/software/laptopvr).
+
+## License
+
+[MIT](LICENSE)
